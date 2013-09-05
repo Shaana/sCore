@@ -1,0 +1,10 @@
+## Interface: 50300
+## Title: sCore
+## Author: Shaana
+## Version: 1.0 beta
+## Notes: Shaana's core functions
+
+config.lua
+pp.lua
+sCore.lua
+
