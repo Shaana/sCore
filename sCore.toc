@@ -5,6 +5,8 @@
 ## Notes: Shaana's core functions
 
 config.lua
+core.lua
+
 pp.lua
 sCore.lua
 
