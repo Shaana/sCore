@@ -22,10 +22,14 @@ local config = {}
 namespace.config = config
 
 ---config section
-config["default"] = {
-	--["__index"] = config["core"],
-	--["font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 18, "OUTLINE"},
-	["test"] = true,
+config["core"] = {
+	["is_a_really_cool_addon"] = true, --debug 
+}
+
+config["pp"] = {
+	["__index"] = config["core"],
+	["enable"] = true,
+	["ui_scale"] = .8,
 }
 
 --inheritance for the config

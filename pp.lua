@@ -18,146 +18,182 @@ along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 
 local addon, namespace = ...
 
-local pp = {}
-namespace.class.pp = pp
+local core = namespace.core
 
-local _inherit = namespace.core._inherit
+local pp = {method = {}}
+namespace.pp = pp
 
-
---Note: This function should only be called once.
---it's not possible to change ui_scale after new() has been called for the first time
-function pp.new(self, ui_scale)
-	--ensure that only one pp object exists
-	if not pp.object then
-		pp.object = CreateFrame("Frame", nil, UIParent)
-		_inherit(pp.object, pp)
-		
-		if not ui_scale or ui_scale == 1 then
-			--Note: seams like if you turn off uiscale, wow already has pixelperfection implemented
-			pp.object.ui_scale = 1
-			pp.object.use_ui_scale = 0 --turned off
-		else
-			assert(ui_scale < 1.2) --Note: possibly this should be <= 1 ?
-			assert(ui_scale >= 0.64)
-			pp.object.ui_scale = ui_scale
-			pp.object.use_ui_scale = 1 --turned on
-		end	
-	end
-	
-	return pp.object
-end
+--Note: Asuming Scale of every frame is 1 and parent tree ends with UIParent
 
 
-function pp.init(self)
+function pp.init(ui_scale)
 	local selected_resolution = ({GetScreenResolutions()})[GetCurrentResolution()]
 	local resolution_width, resolution_height = string.match(selected_resolution, "(%d+)x(%d+)")
 	
-	print(selected_resolution)
-	print(resolution_width, resolution_height)
-	
-	if self.use_ui_scale == 0 then
-		self.scale_factor = 1
-	else
-		self.scale_factor = 768/(resolution_height*self.ui_scale)
+	if not pp._object then
+		pp._object = CreateFrame("Frame", nil, UIParent)
+		pp._mapping = {} --mapping table to track replaced functions of frames.
+		--[[
+		map_table = { 	["frame1"] = { 	["SetPoint"] = function C488F9F1,
+										["Setsize"] = function fC64Fd21,},
+						
+						["frame2"] = {...},
+		}
+		--]]
+		
+		--Note: seams like if you turn off uiscale, wow already has pixelperfection implemented
+		if ui_scale then
+			assert(ui_scale < 1.2) --TODO possibly this should be <= 1 ?
+			assert(ui_scale >= 0.64)
+			
+			pp._ui_scale = ui_scale
+			pp._use_ui_scale = 1 --turned on
+			pp._scale_factor = 768/(resolution_height*ui_scale)
+		else
+			pp._use_ui_scale = 0 --turned off
+			pp._scale_factor = 1
+		end	
 	end
-	
-	--TODO add functions here we want to use SetSize(), SetPoint() ...
-	-- if scalefactor is 1, then simple use the normal functions, otherwiese override them with the scaled functions
-	
-	print(self.ui_scale)
-	print(self.scale_factor)
-	
-	self:RegisterEvent("VARIABLES_LOADED")
-	self:SetScript("OnEvent", self._load)
+
+	pp._object:RegisterEvent("VARIABLES_LOADED")
+	pp._object:SetScript("OnEvent", pp._load)
 end
 
-function pp._load(self)
+--TODO write this function
+function pp.reload()
+	--Go through mapping table and resize 
+	--using old scale and new scale
+	--this might be tricky to implement
+end
+
+function pp._load()
+	assert(pp._object, "pp not initialized") 
+	
 	--setting the multisampling to 1x (anti-aliasing)
 	-- If that doesn't work you must override the anti-aliasing for WoW through a configuration panel for your video card
-	print("loading pixel perfection ...")
 	SetMultisampleFormat(1)
-    SetCVar("uiScale", self.ui_scale)
-    SetCVar("useUiScale", self.use_ui_scale)
-    self:UnregisterEvent("VARIABLES_LOADED") --only need to do this once
+	if pp._use_ui_scale == 1 then
+    	SetCVar("uiScale", pp._ui_scale)
+    end
+    SetCVar("useUiScale", pp._use_ui_scale)
+    pp._object:UnregisterEvent("VARIABLES_LOADED") --only need to do this once
+end
+
+function pp.add(frame, method_name)
+	assert(pp._object, "pp not initialized")
+	assert(method_name, "missing arg")
+	assert(frame[method_name], frame:GetName().." doesn't have this method: "..method_name)
+	
+	--check if the frame has a method called method_name
+	if frame[method_name] then 
+		--first time we map a function for this frame
+		if not pp._mapping[frame] then
+			pp._mapping[frame] = {}
+		end
+		
+		--assert(not pp._mapping[frame][method_name], "already mapped this function")
+	
+		--map the original methed
+		if not pp._mapping[frame][method_name] then
+			pp._mapping[frame][method_name] = frame[method_name]
+			frame[method_name] = pp.method[method_name]
+		end
+	end
+end
+
+function pp.add_all(frame)
+	for k,_ in pairs(pp.method) do
+		--check if the frame has a method called k
+		if frame[k] then
+			pp.add(frame, k)
+		end
+	end
 end
 
 
-local function _scale(numpixels, factor)
-    return factor * floor(numpixels + .5)
+--TODO write those two functions
+function pp.remove(frame, method_name)
+
 end
 
-local function size(frame, width, height)
+
+function pp.remove_all(frame)
+
+end
+
+
+function pp._scale(num_pixels)
+    return pp._scale_factor * floor(num_pixels + .5)
+end
+
+
+function pp.method.SetHeight(frame, height)
+	assert(pp._object, "pp not initialized") 
+	pp._mapping[frame]["SetHeight"](frame, pp._scale(height))
+end
+
+
+function pp.method.SetWidth(frame, width)
+	assert(pp._object, "pp not initialized") 
+	pp._mapping[frame]["SetWidth"](frame, pp._scale(width))
+end
+
+
+function pp.method.SetSize(frame, width, height)
+	assert(pp._object, "pp not initialized") 
     if not height then
         height = width
     end
-    frame:SetSize(scale(width), scale(height))
+	pp._mapping[frame]["SetSize"](frame, pp._scale(width), pp._scale(height))	
 end
 
-local function point(obj, arg1, arg2, arg3, arg4, arg5)
-    -- anyone has a more elegant way for this?
-    if type(arg1)=="number" then arg1 = scale(arg1) end
-    if type(arg2)=="number" then arg2 = scale(arg2) end
-    if type(arg3)=="number" then arg3 = scale(arg3) end
-    if type(arg4)=="number" then arg4 = scale(arg4) end
-    if type(arg5)=="number" then arg5 = scale(arg5) end
-    obj:SetPoint(arg1, arg2, arg3, arg4, arg5)
-end
-
-
-
-function pp.size(self, frame, width, height)
-    if not height then
-        height = width
-    end
-    frame:SetSize(_scale(width, self.scale_factor), _scale(height, self.scale_factor))
+--TODO further test this function
+function pp.method.SetPoint(frame, point, arg2, arg3, arg4, arg5)
+	assert(pp._object, "pp not initialized")
+	--first argument will never be a number
+	if type(arg2) == "number" then arg2 = pp._scale(arg2) end
+    if type(arg3) == "number" then arg3 = pp._scale(arg3) end
+    if type(arg4) == "number" then arg4 = pp._scale(arg4) end
+    if type(arg5) == "number" then arg5 = pp._scale(arg5) end
+	pp._mapping[frame]["SetPoint"](frame, point, arg2, arg3, arg4, arg5)
 end
 
 
-
-
-
-
-local function init()
-	local my_pp = pp:new()
-	my_pp:init()
-	print("lulu: ", my_pp) 
-	print("lulu: ", my_pp.ui_scale)
-	print("lulu: ", my_pp.scale_factor) 
-
-	local my_pp2 = pp:new(0.877)
-	print("lulu: ", my_pp2) 
-
-	--frame one
-	local frame = CreateFrame("Frame", "sPixelPerfection", UIParent)
-	--frame:SetHeight(768)
-	--frame:SetWidth(200)
-	
-	my_pp:size(frame, 200, 768)
-	
-	frame:SetPoint("TOPLEFT",5, 0)
-	frame:Show()
-	
-	local t = frame:CreateTexture(nil,"BACKGROUND")
-	t:SetAllPoints(frame)
-	t:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background")
-	t:SetVertexColor(0, 0, 0, 0.9)
-	t:Show()
-	
-	
-	--frame2 to compare
-	local frame2 = CreateFrame("Frame", "sPixelPerfection2", UIParent)
-	frame2:SetHeight(768)
-	frame2:SetWidth(200)
-
-	frame2:SetPoint("TOPLEFT",250, 0)
-	frame2:Show()
-	
-	local t2 = frame2:CreateTexture(nil,"BACKGROUND")
-	t2:SetAllPoints(frame2)
-	t2:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background")
-	t2:SetVertexColor(0, 0, 0, 0.9)
-	t2:Show()
-	
+--TODO test
+function pp.method.SetFont(frame, font, size, flags)
+	assert(pp._object, "pp not initialized")
+	--TODO we need to make a point to pixel conversion, then scale and convert back!
+	--for now we dont scale
+	pp._mapping[frame]["SetFont"](frame, font, size, flags)
 end
 
-init()
+
+function pp.method.SetBackdrop(frame, backdrop_table)
+	assert(pp._object, "pp not initialized")
+	assert(type(backdrop_table) == "table")
+	--[[
+	{ 	bgFile = "bgFile",
+		edgeFile = "edgeFile",
+		tile = false,
+		tileSize = 0,
+		edgeSize = 32, 
+		insets = { left = 0, right = 0, top = 0, bottom = 0 }.
+	}
+	--]]
+	local new_bd = core._table_copy(backdrop_table)
+	new_bd["tileSize"] = _scale(new_bd["tileSize"])
+	new_bd["edgeSize"] = _scale(new_bd["edgeSize"])
+	new_bd["insets"]["left"] = _scale(new_bd["insets"]["left"])
+	new_bd["insets"]["right"] = _scale(new_bd["insets"]["right"])
+	new_bd["insets"]["top"] = _scale(new_bd["insets"]["top"])
+	new_bd["insets"]["bottom"] = _scale(new_bd["insets"]["bottom"])
+	
+	pp._mapping[frame]["SetFont"](frame, new_bd)
+end
+
+--TODO there are more functions like setMaxResize
+
+
+
+
+
