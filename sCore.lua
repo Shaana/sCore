@@ -19,7 +19,6 @@ along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 local addon, namespace = ...
 
 local config = namespace.config
-
 local pp = namespace.pp
 
 local function init()

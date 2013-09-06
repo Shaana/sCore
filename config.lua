@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
+local setmetatable, pairs = setmetatable, pairs
+
 local addon, namespace = ...
 
 local config = {}
@@ -29,7 +31,7 @@ config["core"] = {
 config["pp"] = {
 	["__index"] = config["core"],
 	["enable"] = true,
-	["ui_scale"] = .8,
+	["ui_scale"] = nil, --nil or 0.64 to 1; nil turns it off
 }
 
 --inheritance for the config

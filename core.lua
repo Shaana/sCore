@@ -16,8 +16,13 @@ You should have received a copy of the GNU General Public License
 along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
+local assert, type, pairs, getmetatable, setmetatable = assert, type, pairs, getmetatable, setmetatable
+local _G = _G
 
 local addon, namespace = ...
+
+--expose sCore to be used by other addons
+_G.sCore = namespace
 
 local core = {}
 namespace.core = core
