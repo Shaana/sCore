@@ -31,7 +31,7 @@ config["core"] = {
 config["pp"] = {
 	["__index"] = config["core"],
 	["enable"] = true,
-	["ui_scale"] = nil, --nil or 0.64 to 1; nil turns it off
+	["ui_scale"] = 0.64, --nil or 0.64 to 1; nil turns it off
 }
 
 --inheritance for the config

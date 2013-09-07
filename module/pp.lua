@@ -122,20 +122,20 @@ function pp.remove_all(frame)
 end
 
 
-function pp._scale(num_pixels)
+function pp.scale(num_pixels)
     return pp._scale_factor * floor(num_pixels + .5)
 end
 
 
 function pp.method.SetHeight(frame, height)
 	assert(pp._object, "pp not initialized") 
-	pp._mapping[frame]["SetHeight"](frame, pp._scale(height))
+	pp._mapping[frame]["SetHeight"](frame, pp.scale(height))
 end
 
 
 function pp.method.SetWidth(frame, width)
 	assert(pp._object, "pp not initialized") 
-	pp._mapping[frame]["SetWidth"](frame, pp._scale(width))
+	pp._mapping[frame]["SetWidth"](frame, pp.scale(width))
 end
 
 
@@ -144,17 +144,17 @@ function pp.method.SetSize(frame, width, height)
     if not height then
         height = width
     end
-	pp._mapping[frame]["SetSize"](frame, pp._scale(width), pp._scale(height))	
+	pp._mapping[frame]["SetSize"](frame, pp.scale(width), pp.scale(height))	
 end
 
 --TODO further test this function
 function pp.method.SetPoint(frame, point, arg2, arg3, arg4, arg5)
 	assert(pp._object, "pp not initialized")
 	--first argument will never be a number
-	if type(arg2) == "number" then arg2 = pp._scale(arg2) end
-    if type(arg3) == "number" then arg3 = pp._scale(arg3) end
-    if type(arg4) == "number" then arg4 = pp._scale(arg4) end
-    if type(arg5) == "number" then arg5 = pp._scale(arg5) end
+	if type(arg2) == "number" then arg2 = pp.scale(arg2) end
+    if type(arg3) == "number" then arg3 = pp.scale(arg3) end
+    if type(arg4) == "number" then arg4 = pp.scale(arg4) end
+    if type(arg5) == "number" then arg5 = pp.scale(arg5) end
 	pp._mapping[frame]["SetPoint"](frame, point, arg2, arg3, arg4, arg5)
 end
 
@@ -164,7 +164,7 @@ function pp.method.SetFont(frame, font, size, flags)
 	assert(pp._object, "pp not initialized")
 	--TODO we need to make a point to pixel conversion, then scale and convert back!
 	--for now we dont scale
-	pp._mapping[frame]["SetFont"](frame, font, pp._scale(size), flags)
+	pp._mapping[frame]["SetFont"](frame, font, pp.scale(size), flags)
 end
 
 --TODO test
@@ -181,12 +181,12 @@ function pp.method.SetBackdrop(frame, backdrop_table)
 	}
 	--]]
 	local new_bd = core._table_copy(backdrop_table)
-	new_bd["tileSize"] = pp._scale(new_bd["tileSize"])
-	new_bd["edgeSize"] = pp._scale(new_bd["edgeSize"])
-	new_bd["insets"]["left"] = pp._scale(new_bd["insets"]["left"])
-	new_bd["insets"]["right"] = pp._scale(new_bd["insets"]["right"])
-	new_bd["insets"]["top"] = pp._scale(new_bd["insets"]["top"])
-	new_bd["insets"]["bottom"] = pp._scale(new_bd["insets"]["bottom"])
+	new_bd["tileSize"] = pp.scale(new_bd["tileSize"])
+	new_bd["edgeSize"] = pp.scale(new_bd["edgeSize"])
+	new_bd["insets"]["left"] = pp.scale(new_bd["insets"]["left"])
+	new_bd["insets"]["right"] = pp.scale(new_bd["insets"]["right"])
+	new_bd["insets"]["top"] = pp.scale(new_bd["insets"]["top"])
+	new_bd["insets"]["bottom"] = pp.scale(new_bd["insets"]["bottom"])
 	
 	pp._mapping[frame]["SetFont"](frame, new_bd)
 end
