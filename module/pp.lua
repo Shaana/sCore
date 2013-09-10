@@ -111,7 +111,7 @@ function pp.add_all(frame)
 end
 
 
---TODO write those two functions
+--TODO write those two functions should they ever be needed ...
 function pp.remove(frame, method_name)
 
 end
@@ -124,6 +124,10 @@ end
 
 function pp.scale(num_pixels)
     return pp._scale_factor * floor(num_pixels + .5)
+end
+
+function pp.get_scale_factor()
+	return pp._scale_factor
 end
 
 
