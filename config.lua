@@ -34,6 +34,16 @@ config["pp"] = {
 	["ui_scale"] = 0.64, --nil or 0.64 to 1; nil turns it off
 }
 
+config["health"] = {
+	["frequent_update"] = true,
+	["enable"] = true,
+	["width"] = 280,
+	["height"] = 24,
+	["overflow_factor"] = 1.1,
+	["texture"] = "Interface\\AddOns\\sNameplates\\media\\barSmall",
+	["anchor"] = {"CENTER", UIParent, "CENTER", 0, 0},
+}
+
 --inheritance for the config
 for k,_ in pairs(config) do 
 	setmetatable(config[k], config[k])

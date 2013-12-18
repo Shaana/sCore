@@ -62,5 +62,27 @@ core._table_copy = _table_copy
 
 
 
+--[[
+--check for config integrety
+--TODO replace this with some proper check function
+--maybe move to sCore ? make something a little less specific
+
+local function check_config_integrity()
+	--make this function set default values as well ?
+	--if attribute "includeWeapons", 1 given, we expect  "weaponTemplate", buffTemplate as well
+	--__attribte expected for the coresponding table
+	--anchor expected
+end
+core.check_config_integrity = check_config_integrity
+
+
+local function check_attribute_integrity()
+
+end
+core.check_attribute_integrity = check_attribute_integrity
+--]]
+
+
+
 
 
