@@ -125,8 +125,6 @@ function predict.new(self, unit, config, parent)
 	
 	object:SetScript("OnEvent", self.update)
 
-	
-
 	return object
 end
 
@@ -246,11 +244,22 @@ function predict.update_absorb(self)
 	
 end
 
+
 function predict.update_all(self)
 
 end
 
+--DEBUG only config
+config = {}
+config["health"] = {
+	["frequent_update"] = true,
+	["enable"] = true,
+	["width"] = 280,
+	["height"] = 24,
+	["overflow_factor"] = 1.5,
+	["texture"] = "Interface\\AddOns\\sNameplates\\media\\barSmall",
+	["anchor"] = {"CENTER", UIParent, "CENTER", 0, 0},
+}
 
-
-p = predict:new("player", namespace.config["health"], UIParent)
+p = predict:new("player", config["health"], UIParent)
 
