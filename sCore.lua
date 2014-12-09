@@ -1,5 +1,5 @@
 --[[
-Copyright (c) 2008-2013 Shaana <shaana@student.ethz.ch>
+Copyright (c) 2008-2014 Shaana <shaana@student.ethz.ch>
 This file is part of sCore.
 
 sCore is free software: you can redistribute it and/or modify

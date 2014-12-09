@@ -1,4 +1,4 @@
-## Interface: 50400
+## Interface: 60000
 ## Title: sCore
 ## Author: Shaana
 ## Version: 1.0 beta
@@ -8,7 +8,10 @@ config.lua
 core.lua
 
 module\pp.lua
+module\aura.lua
+module\cooldown.lua
 module\health.lua
+module\castbar.lua
 
 sCore.lua
 

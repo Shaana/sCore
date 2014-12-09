@@ -1,5 +1,5 @@
 --[[
-Copyright (c) 2008-2013 Shaana <shaana@student.ethz.ch>
+Copyright (c) 2008-2014 Shaana <shaana@student.ethz.ch>
 This file is part of sCore.
 
 sCore is free software: you can redistribute it and/or modify
@@ -30,8 +30,12 @@ config["core"] = {
 
 config["pp"] = {
 	["__index"] = config["core"],
-	["enable"] = true,
+	["enable"] = false,
 	["ui_scale"] = 0.64, --nil or 0.64 to 1; nil turns it off
+}
+
+config["aura"] = {
+	
 }
 
 

@@ -1,5 +1,5 @@
 --[[
-Copyright (c) 2008-2013 Shaana <shaana@student.ethz.ch>
+Copyright (c) 2008-2014 Shaana <shaana@student.ethz.ch>
 This file is part of sCore.
 
 sCore is free software: you can redistribute it and/or modify
@@ -24,15 +24,43 @@ local math_floor = math.floor
 
 local core = namespace.core
 
-local predict = {}
-namespace.predict = predict
+local health = {}
+namespace.health = health
 
 
-function predict.new(self, unit, config, parent)
+--TODO test, remove events from health.new(...)
+function health.init(self, unit, config, parent)
+	local object
+	if self == health then
+		object = self:new(unit, config, parent)
+	else
+		object = self
+	end
+	
+	--events
+	object:RegisterEvent("UNIT_HEAL_PREDICTION")
+	object:RegisterEvent("UNIT_MAXHEALTH")
+	if config["frequent_update"] then
+		object:RegisterEvent("UNIT_HEALTH_FREQUENT")
+	else
+		object:RegisterEvent("UNIT_HEALTH")
+	end
+	object:RegisterEvent("UNIT_ABSORB_AMOUNT_CHANGED")
+	object:RegisterEvent("UNIT_HEAL_ABSORB_AMOUNT_CHANGED")
+
+	object:RegisterEvent("PLAYER_ENTERING_WORLD")
+	
+	object:SetScript("OnEvent", self.update)
+	
+	return object
+end
+
+
+function health.new(self, unit, config, parent)
 	local object = CreateFrame("Frame", nil, parent)
 
 	--inheritance
-	core._inherit(object, predict)
+	core._inherit(object, health)
 	
 	object.config = config
 	object.unit = unit
@@ -134,7 +162,7 @@ end
 --TODO add dummy coloring to check if your heal will overheal ?
 
 --TODO is there a better way to slove this ? with smart anchors ? --> less updating
-function predict.update(self, event, unit)
+function health.update(self, event, unit)
 	if not (unit == nil or self.unit == unit) then 
 		return 
 	end
@@ -179,11 +207,11 @@ function predict.update(self, event, unit)
 
 end
 
-function predict.update_factor(self)
+function health.update_factor(self)
 	self.curent_values["factor"] = self.config["width"]/UnitHealthMax(self.unit)
 end
 
-function predict.update_health(self)
+function health.update_health(self)
 	self.curent_values["health"] = math_floor(self.curent_values["factor"]*UnitHealth(self.unit))
 	self.health_bar:SetValue(self.curent_values["health"])
 end
@@ -191,9 +219,9 @@ end
 
 --local inc = {"incoming_heal", "all_incoming_heal"} 
 --tODO doesnt work, cause self nil probably
---predict.__inc = {["incoming_heal"] = self.incoming_bar, ["all_incoming_heal"] = self.all_incoming_bar}
+--health.__inc = {["incoming_heal"] = self.incoming_bar, ["all_incoming_heal"] = self.all_incoming_bar}
 
-function predict.update_incoming_heal(self)
+function health.update_incoming_heal(self)
 	--TODO maybe do some fancy for i=1, 2 do ...
 	--player's incoming heal
 	if self.curent_values["incoming_heal"] > 0 then
@@ -226,7 +254,7 @@ function predict.update_incoming_heal(self)
 	--self.all_incoming_bar:SetValue(math_floor())
 end
 
-function predict.update_absorb(self)
+function health.update_absorb(self)
 	--TODO
 	--totalHealAbsorbs = UnitGetTotalHealAbsorbs("unit")
 	
@@ -245,7 +273,7 @@ function predict.update_absorb(self)
 end
 
 
-function predict.update_all(self)
+function health.update_all(self)
 
 end
 
@@ -261,5 +289,6 @@ config["health"] = {
 	["anchor"] = {"CENTER", UIParent, "CENTER", 0, 0},
 }
 
-p = predict:new("player", config["health"], UIParent)
+--p = health:new("player", config["health"], UIParent)
 
+print("loading health")

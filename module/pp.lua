@@ -1,5 +1,5 @@
 --[[
-Copyright (c) 2008-2013 Shaana <shaana@student.ethz.ch>
+Copyright (c) 2008-2014 Shaana <shaana@student.ethz.ch>
 This file is part of sCore.
 
 sCore is free software: you can redistribute it and/or modify
@@ -18,6 +18,14 @@ along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 
 local addon, namespace = ...
 
+
+--upvalue
+local string_match = string.match
+
+--upvalue wow api
+local CreateFrame, GetScreenResolutions, GetCurrentResolution = CreateFrame, GetScreenResolutions, GetCurrentResolution
+
+
 local core = namespace.core
 
 local pp = {method = {}}
@@ -26,11 +34,17 @@ namespace.pp = pp
 --Note: Asuming Scale of every frame is 1 and parent tree ends with UIParent
 --check http://nclabs.org/articles/2
 
+--note:	its not a class, you can't make multiple objects.
+
+
+--TODO if pp._object then ... move it to first line ?
 function pp.init(ui_scale)
-	local selected_resolution = ({GetScreenResolutions()})[GetCurrentResolution()]
-	local resolution_width, resolution_height = string.match(selected_resolution, "(%d+)x(%d+)")
-	
 	if not pp._object then
+		--local selected_resolution = ({GetScreenResolutions()})[GetCurrentResolution()]
+		--local resolution_width, resolution_height = string.match(selected_resolution, "(%d+)x(%d+)")
+		local resolution_width, resolution_height = string_match(({GetScreenResolutions()})[GetCurrentResolution()], "(%d+)x(%d+)")
+		
+	
 		pp._object = CreateFrame("Frame", nil, UIParent)
 		pp._mapping = {} --mapping table to track replaced functions of frames.
 		--[[
@@ -53,10 +67,17 @@ function pp.init(ui_scale)
 			pp._use_ui_scale = 0 --turned off
 			pp._scale_factor = 1
 		end	
-	end
 
-	pp._object:RegisterEvent("VARIABLES_LOADED")
-	pp._object:SetScript("OnEvent", pp._load)
+		pp._object:RegisterEvent("VARIABLES_LOADED")
+		pp._object:SetScript("OnEvent", pp._load)
+	end
+end
+
+function pp.loaded()
+	if pp._object then
+		return true
+	end
+	return false
 end
 
 --TODO write this function
@@ -73,10 +94,10 @@ function pp._load()
 	-- If that doesn't work you must override the anti-aliasing for WoW through a configuration panel for your video card
 	SetMultisampleFormat(1)
 	if pp._use_ui_scale == 1 then
-    	SetCVar("uiScale", pp._ui_scale)
-    end
-    SetCVar("useUiScale", pp._use_ui_scale)
-    pp._object:UnregisterEvent("VARIABLES_LOADED") --only need to do this once
+  	SetCVar("uiScale", pp._ui_scale)
+  end
+  SetCVar("useUiScale", pp._use_ui_scale)
+  pp._object:UnregisterEvent("VARIABLES_LOADED") --only need to do this once
 end
 
 function pp.add(frame, method_name)
@@ -155,10 +176,10 @@ end
 function pp.method.SetPoint(frame, point, arg2, arg3, arg4, arg5)
 	assert(pp._object, "pp not initialized")
 	--first argument will never be a number
-	if type(arg2) == "number" then arg2 = pp.scale(arg2) end
-    if type(arg3) == "number" then arg3 = pp.scale(arg3) end
-    if type(arg4) == "number" then arg4 = pp.scale(arg4) end
-    if type(arg5) == "number" then arg5 = pp.scale(arg5) end
+  if type(arg2) == "number" then arg2 = pp.scale(arg2) end
+  if type(arg3) == "number" then arg3 = pp.scale(arg3) end
+  if type(arg4) == "number" then arg4 = pp.scale(arg4) end
+  if type(arg5) == "number" then arg5 = pp.scale(arg5) end
 	pp._mapping[frame]["SetPoint"](frame, point, arg2, arg3, arg4, arg5)
 end
 
@@ -167,7 +188,7 @@ end
 function pp.method.SetFont(frame, font, size, flags)
 	assert(pp._object, "pp not initialized")
 	--TODO we need to make a point to pixel conversion, then scale and convert back!
-	--for now we dont scale
+	--for now we don't scale
 	pp._mapping[frame]["SetFont"](frame, font, pp.scale(size), flags)
 end
 
@@ -192,12 +213,9 @@ function pp.method.SetBackdrop(frame, backdrop_table)
 	new_bd["insets"]["top"] = pp.scale(new_bd["insets"]["top"])
 	new_bd["insets"]["bottom"] = pp.scale(new_bd["insets"]["bottom"])
 	
-	pp._mapping[frame]["SetFont"](frame, new_bd)
+	pp._mapping[frame]["SetBackdrop"](frame, new_bd)
 end
 
 --TODO there are more functions like setMaxResize
-
-
-
 
 
