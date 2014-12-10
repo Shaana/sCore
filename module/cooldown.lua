@@ -64,7 +64,7 @@ end
 
 
 function cooldown.untrack(self)
-  self:UnregisterEvent("SPELLS_CHANGED")
+  self:UnregisterEvent("SPELL_UPDATE_USABLE")
 end
 
 
@@ -122,18 +122,15 @@ function button.new(self, config, cooldown)
   
   object.icon.texture:SetAllPoints(object.icon)
   object.icon.texture:SetTexture(texture)
-  object.icon:SetAlpha(0.2)
+  --object.icon:SetAlpha(0.2)
   
-  local a = object.icon.texture:SetDesaturated(true)
-  print("support")
-  print(a)
+  --local a = object.icon.texture:SetDesaturated(true)
+  --print("support")
+  --print(a)
   
-  object.animation = CreateFrame("Cooldown",nil, object)
-  object.animation:SetAllPoints()
-  object.animation:SetCooldown(GetTime(), 20)
-  
-  
-  
+  object.animation = CreateFrame("Cooldown", nil, object,  "CooldownFrameTemplate")
+  object.animation:SetAllPoints(object)
+  object.animation:SetCooldown(GetTime(), 120)
   
   return object
 end
@@ -142,8 +139,8 @@ end
 function button.update(self)
   --local start, duration = GetSpellCooldown("Spell Name")
   --myCooldown:SetCooldown(start, duration)
-  print("update button")
-  self.animation:SetCooldown(GetTime(), 20)
+  print("update button") 
+  self.animation:SetCooldown(GetTime(), 120)
 end
 
 
@@ -173,6 +170,7 @@ function SetDesaturation(texture, desaturation)
   end
 end
 --]]
+
 
 
 
