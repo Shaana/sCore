@@ -128,6 +128,7 @@ function button.new(self, config, cooldown)
   --print("support")
   --print(a)
   
+  --Note: apparently the frame needs to inherit  from CooldownFrameTemplate in order to work 
   object.animation = CreateFrame("Cooldown", nil, object,  "CooldownFrameTemplate")
   object.animation:SetAllPoints(object)
   object.animation:SetCooldown(GetTime(), 120)
