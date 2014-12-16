@@ -18,36 +18,28 @@ along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 
 local addon, namespace = ...
 
+local core = namespace.core
+
+
+--TODO upvalue
+
 local cooldown = {__instance = "cooldown"}
 
---Note: id can be both a spell_id (integer) or a slot_id (string) 
+--Note: id can be both a spell_id (integer) or a slot_id (string) and even enemy cooldowns
 function cooldown.new(self, unit, id, duration, reset_spell_id)
   local object = CreateFrame("Frame", nil, UIParent)
   
-  --inherit functions from two objects (cooldown class and CreateFrame class)
-  local parent = {self, getmetatable(object).__index}
-  setmetatable(object, self)
-  self.__index = function(t,k)
-    for i=1, #parent do
-      local v = parent[i][k]
-      if v then
-        return v
-      end
-    end
-  end
-
+  core.inherit(object, self)
+  
   object.unit = unit
   object.id = id
-  
   object.name, _, object.texture = GetSpellInfo(id)
-  
   object.start, object.duration = 0, 0
 
   --the cooldown_button class can register buttons here, which will be updated On_event
   object._button = {}
   
   object:RegisterEvent("PLAYER_ENTERING_WORLD")
-  
   object:SetScript("OnEvent", self.update)
   
   object:track()
@@ -56,9 +48,7 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
 end
 
 
---enable event listener to follow the cooldown
 function cooldown.track(self)
-  --self:RegisterEvent("SPELLS_CHANGED")
   self:RegisterEvent("SPELL_UPDATE_USABLE")
 end
 
@@ -67,27 +57,45 @@ function cooldown.untrack(self)
   self:UnregisterEvent("SPELL_UPDATE_USABLE")
 end
 
-
-function cooldown.update(self, event, arg1)
-  print("in update")
-  start, duration = GetSpellCooldown(self.id)
-  if start > 0 then
-    print("updating cd")
-    print((duration-(GetTime()-start))/60)
+--[[
+function cooldown.update(self, event, arg0)
+  --self.start, self.duration = GetSpellCooldown(self.id)
+  if self.start > 0 then
     for i=1, #self._button do
       self._button[i]:update()
     end
+  else
+    --disable button ?
+  end
+end
+--]]
+function cooldown.update(self, event, arg0)
+  local start, duration = GetSpellCooldown(self.id)
+  if not (self.start == start and self.duration == duration) then
+    self.start, self.duration = start, duration
+    for i=1, #self._button do
+      self._button[i]:update()
+    end
+  else
+    print("droping update")
   end
 end
 
-
+--TODO
 function cooldown.reset(self)
 
 end
 
 
+
 local button = {__instance = "cooldown_button"}
 
+local config = {["anchor"] = {"CENTER",0,0},
+                ["size"] = {64, 64},
+                ["enable_tooltip"] = false,
+                ["texture_border"] = nil,
+                ["texture_background"] = nil,
+                }
 
 function button.new(self, config, cooldown)
   local object = CreateFrame("Frame",nil, UIParent)
@@ -104,24 +112,19 @@ function button.new(self, config, cooldown)
   end
   
   object.config = config
-  object.cooldown = cooldown
-  
+  object.cooldown = nil
   
   object:SetPoint("CENTER",0,0)
   object:SetSize(64,64)
   
-  
   object.icon = CreateFrame("Frame", nil, object)
   object.icon.texture = object.icon:CreateTexture(nil, "BACKGROUND")
-  
   
   object.icon:SetAllPoints(object)
   object.icon:SetFrameLevel(1)
   
-  name, _, texture = GetSpellInfo(2944)-- object.cooldown.id)
-  
   object.icon.texture:SetAllPoints(object.icon)
-  object.icon.texture:SetTexture(texture)
+  
   --object.icon:SetAlpha(0.2)
   
   --local a = object.icon.texture:SetDesaturated(true)
@@ -131,8 +134,11 @@ function button.new(self, config, cooldown)
   --Note: apparently the frame needs to inherit  from CooldownFrameTemplate in order to work 
   object.animation = CreateFrame("Cooldown", nil, object,  "CooldownFrameTemplate")
   object.animation:SetAllPoints(object)
-  object.animation:SetCooldown(GetTime(), 120)
   
+  if cooldown then
+    object:set_cooldown(cooldown)
+  end
+
   return object
 end
 
@@ -140,37 +146,40 @@ end
 function button.update(self)
   --local start, duration = GetSpellCooldown("Spell Name")
   --myCooldown:SetCooldown(start, duration)
-  print("update button") 
-  self.animation:SetCooldown(GetTime(), 120)
+  --print("update button") 
+  --self.animation:SetCooldown(GetTime(), 120)
+  self.animation:SetCooldown(self.cooldown.start, self.cooldown.duration)
 end
 
 
 function button.set_cooldown(self, cooldown)
   table.insert(cooldown._button, self)
+  self.cooldown = cooldown
+  self.icon.texture:SetTexture(cooldown.texture)
 end
+
+
+local header = {__instance="cooldown_header"}
+
+
+function header.new(self, config)
+
+end
+
+function header.update(self)
+
+end
+
+
 
 
 local c = cooldown:new("player", 17) --pw:shield
+--print(c)
 local b = button:new("config",c)
-b:set_cooldown(c)
+--print(b)
 
+--b:set_cooldown(c)
 
---[[
--- Wrapper for the desaturation feature used in the default UI:
--- if running on display hardware (or drivers, etc) that does not support desaturation,
--- uses SetVertexColor to "dim" the texture instead
- 
-function SetDesaturation(texture, desaturation)
-  local shaderSupported = texture:SetDesaturated(desaturation);
-  if ( not shaderSupported ) then
-    if ( desaturation ) then
-      texture:SetVertexColor(0.5, 0.5, 0.5);
-    else
-      texture:SetVertexColor(1.0, 1.0, 1.0);
-    end
-  end
-end
---]]
 
 
 

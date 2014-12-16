@@ -30,6 +30,36 @@ namespace.core = core
 local class = {}
 namespace.class = class
 
+local function is_instance(object, class)
+  if object.__instance == class.__instance then
+    return true
+  end
+  return false
+end
+
+--This is the new version of the inherit function and will replace _inherit in the future
+local function inherit(object, class, secure)
+  assert(type(class) == "table")
+  if secure then
+    --just create links
+    for k,v in pairs(class) do
+      object[k] = v
+    end
+  end
+  --use meta tables for the inheritance
+  local parent = {class, getmetatable(object).__index}
+  setmetatable(object, class)
+  class.__index = function(t,k)
+    for i=1, #parent do
+      local v = parent[i][k]
+      if v then
+        return v
+      end
+    end
+  end
+end
+core.inherit = inherit
+
 --inherit function for lua class implementations
 local function _inherit(object, class)	
 	assert(type(class) == "table")
