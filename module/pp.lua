@@ -48,10 +48,12 @@ function pp.init(ui_scale)
 		pp._object = CreateFrame("Frame", nil, UIParent)
 		pp._mapping = {} --mapping table to track replaced functions of frames.
 		--[[
-		map_table = { 	["frame1"] = { 	["SetPoint"] = function C488F9F1,
-										["Setsize"] = function fC64Fd21,},
-						
-						["frame2"] = {...},
+		map_table = { 	
+		    ["frame1"] = { 	
+		        ["SetPoint"] = function C488F9F1,
+						["Setsize"] = function fC64Fd21,
+				},		
+				["frame2"] = {...},
 		}
 		--]]
 		
@@ -73,6 +75,7 @@ function pp.init(ui_scale)
 	end
 end
 
+
 function pp.loaded()
 	if pp._object then
 		return true
@@ -80,12 +83,6 @@ function pp.loaded()
 	return false
 end
 
---TODO write this function
-function pp.reload()
-	--Go through mapping table and resize 
-	--using old scale and new scale
-	--this might be tricky to implement
-end
 
 function pp._load()
 	assert(pp._object, "pp not initialized") 

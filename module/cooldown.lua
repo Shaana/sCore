@@ -16,10 +16,36 @@ You should have received a copy of the GNU General Public License
 along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
+
+--[[
+  Allows to track spell and item cooldowns. 
+  Buttons visually display the cooldown
+  
+  
+  
+  Notes:
+
+
+  Examples:
+  
+    --create a new spell cooldown for the player (power word: shield)
+    local spell_cooldown = cooldown:new("player", 17)
+    
+    --create the button
+    local config = {
+    
+    }
+    
+    local spell_button = button:new(config, spell_cooldown)
+    
+    --this equivalent
+    local spell_button = button:new(config)
+    spell_button:set_cooldown(spell_cooldown)
+  
+--]]
+
 local addon, namespace = ...
-
 local core = namespace.core
-
 
 --TODO upvalue
 
@@ -31,17 +57,32 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
   
   core.inherit(object, self)
   
-  object.unit = unit
-  object.id = id
-  object.name, _, object.texture = GetSpellInfo(id)
-  object.start, object.duration = 0, 0
-
+  object._unit = unit
+  object._id = id
+  object._start, object._duration = 0, 0
+  
   --the cooldown_button class can register buttons here, which will be updated On_event
   object._button = {}
   
-  object:RegisterEvent("PLAYER_ENTERING_WORLD")
-  object:SetScript("OnEvent", self.update)
-  
+  --spell cooldown
+  if type(id) == "number" then
+    _,_, object._texture = GetSpellInfo(id) --object.name
+    object._type = 0
+    
+  --item cooldown (slot name is given)
+  elseif type(id) == "string" then
+    --Note: we save the numeric slot identifier not the slot_name passed to cooldown.new function
+    object._id = GetInventorySlotInfo(id)
+    object._texture = GetInventoryItemTexture(unit, object._id)
+    object._type = 1
+
+  --TODO
+  --enemy cooldown
+  --elseif not (unit == "player" or unit == "pet") then
+    --object._type = 2
+  end
+
+  object:SetScript("OnEvent", self.update) 
   object:track()
   
   return object
@@ -49,73 +90,129 @@ end
 
 
 function cooldown.track(self)
-  self:RegisterEvent("SPELL_UPDATE_USABLE")
+  self:RegisterEvent("PLAYER_ENTERING_WORLD")
+  
+  if self._type == 0 then
+    self:RegisterEvent("SPELL_UPDATE_USABLE")
+  elseif self._type == 1 then
+    --Note: an item might be switched, update texture
+    self:RegisterEvent("UNIT_INVENTORY_CHANGED")
+    --Note: BAG_UPDATE_COOLDOWN fires every 3-5 seconds for no apparent reason 
+    self:RegisterEvent("BAG_UPDATE_COOLDOWN")
+  elseif self._type == 2 then
+  
+  elseif self._type == 3 then
+  
+  end
 end
 
 
 function cooldown.untrack(self)
-  self:UnregisterEvent("SPELL_UPDATE_USABLE")
+  self:UnregisterAllEvents()
 end
 
---[[
-function cooldown.update(self, event, arg0)
-  --self.start, self.duration = GetSpellCooldown(self.id)
-  if self.start > 0 then
+
+function cooldown.update(self, event, arg)
+  if event == "UNIT_INVENTORY_CHANGED" and arg == self._unit then
+    self._texture = GetInventoryItemTexture(self._unit, self._id)
+    for i=1, #self._button do
+      self._button[i]:update_texture()
+    end
+  end
+  
+  local start, duration
+  
+  if self._type == 0 then
+    start, duration = GetSpellCooldown(self._id)
+  elseif self._type == 1 then
+    start, duration = GetInventoryItemCooldown(self._unit, self._id)
+  end
+  
+  if not (self._start == start and self._duration == duration) then
+    self._start, self._duration = start, duration
     for i=1, #self._button do
       self._button[i]:update()
     end
-  else
-    --disable button ?
+--  else
+--    print("droping update")
+--    print(self._type)
   end
-end
---]]
-function cooldown.update(self, event, arg0)
-  local start, duration = GetSpellCooldown(self.id)
-  if not (self.start == start and self.duration == duration) then
-    self.start, self.duration = start, duration
-    for i=1, #self._button do
-      self._button[i]:update()
+  
+  
+  --[[
+  elseif event == "BAG_UPDATE_COOLDOWN" then 
+    local start, duration = GetInventoryItemCooldown(self._unit, self._slot_id)
+    if not (self._start == start and self._duration == duration) then
+      self._start, self._duration = start, duration
+      for i=1, #self._button do
+        self._button[i]:update()
+      end
+    else
+      print("droping update bag")
     end
-  else
-    print("droping update")
+    
+  elseif event == "SPELL_UPDATE_USABLE" then
+    local start, duration = GetSpellCooldown(self._id)
+    if not (self._start == start and self._duration == duration) then
+      self._start, self._duration = start, duration
+      for i=1, #self._button do
+        self._button[i]:update()
+      end
+    else
+      print("droping update spell")
+    end
   end
-end
-
---TODO
-function cooldown.reset(self)
-
+  --]]
+  
+  
 end
 
 
 
 local button = {__instance = "cooldown_button"}
 
-local config = {["anchor"] = {"CENTER",0,0},
-                ["size"] = {64, 64},
-                ["enable_tooltip"] = false,
-                ["texture_border"] = nil,
-                ["texture_background"] = nil,
-                }
+local default_button_config = {
+  ["anchor"] = {"CENTER", 0, 50},
+  ["size"] = {200, 200},
+  ["enable_tooltip"] = false,
+  ["texture_border"] = nil,
+  ["texture_background"] = nil,
+}
 
 function button.new(self, config, cooldown)
   local object = CreateFrame("Frame",nil, UIParent)
   
-  local parent = {self, getmetatable(object).__index}
-  setmetatable(object, self)
-  self.__index = function(t,k)
-    for i=1, #parent do
-      local v = parent[i][k]
-      if v then
-        return v
-      end
-    end
-  end
+  core.inherit(object, self)
+  
+  
+  local backdrop = { 
+      bgFile = "Interface\\AddOns\\sCore\\media\\bg_flat", 
+      edgeFile = "Interface\\AddOns\\sCore\\media\\sEdgeFile",
+      tile = true,
+      tileSize = 16, 
+      edgeSize = 16, 
+      insets = { 
+        left = 0, 
+        right = 0, 
+        top = 0, 
+        bottom = 0,
+      },
+    }
+  
+  
   
   object.config = config
   object.cooldown = nil
   
-  object:SetPoint("CENTER",0,0)
-  object:SetSize(64,64)
+  object:SetPoint(unpack(object.config["anchor"]))
+  object:SetSize(unpack(object.config["size"]))
+  
+  object:SetFrameLevel(1)
+  
+  object:SetBackdrop(backdrop)
+  object:SetBackdropColor(1,1,1,0)
+  object:SetBackdropBorderColor(0.5,0.5,0,1)
+  
   
   object.icon = CreateFrame("Frame", nil, object)
   object.icon.texture = object.icon:CreateTexture(nil, "BACKGROUND")
@@ -135,6 +232,8 @@ function button.new(self, config, cooldown)
   object.animation = CreateFrame("Cooldown", nil, object,  "CooldownFrameTemplate")
   object.animation:SetAllPoints(object)
   
+  object.text = object:CreateFontString(nil, 'OVERLAY')
+  
   if cooldown then
     object:set_cooldown(cooldown)
   end
@@ -148,22 +247,41 @@ function button.update(self)
   --myCooldown:SetCooldown(start, duration)
   --print("update button") 
   --self.animation:SetCooldown(GetTime(), 120)
-  self.animation:SetCooldown(self.cooldown.start, self.cooldown.duration)
+  self.animation:SetCooldown(self.cooldown._start, self.cooldown._duration)
+end
+
+function button.update_texture(self)
+  --self.icon.texture:SetTexture(self.cooldown._texture)
 end
 
 
 function button.set_cooldown(self, cooldown)
   table.insert(cooldown._button, self)
   self.cooldown = cooldown
-  self.icon.texture:SetTexture(cooldown.texture)
+  --self.icon.texture:SetTexture(cooldown._texture)
 end
 
 
 local header = {__instance="cooldown_header"}
 
+local default_header_config = {
+  ["anchor"] = {},
+  ["horizontal_spacing"] = 5,
+  ["vertical_spacing"] = 5,
+  ["grow_direction"] = "LEFTUP",
+  ["spell_ids"] = {nil},
+}
 
-function header.new(self, config)
-
+function header.new(self, config, button_config)
+  local object =  CreateFrame("Frame",nil, UIParent)
+  core.inherit(object, self)
+  
+  for i=1, #config["spell_ids"] do
+    
+    button:new(button_config)
+  end
+  
+  return object
 end
 
 function header.update(self)
@@ -173,6 +291,56 @@ end
 
 
 
+--[[
+  ["PRIEST"] = {
+17, -- Power Word: Shield
+527,  -- Purify
+586,  -- Fade
+724,  -- Lightwell
+6346, -- Fear Ward
+8092, -- Mind Blast
+8122, -- Psychic Scream
+10060,  -- Power Infusion
+14914,  -- Holy Fire
+15286,  -- Vampiric Embrace
+15487,  -- Silence
+19236,  -- Desperate Prayer
+32375,  -- Mass Dispel
+32379,  -- Shdow Word: Death
+33076,  -- Prayer of Mending
+33206,  -- Pain Suppression
+34433,  -- Shadowfiend
+34861,  -- Circle of Healing
+47540,  -- Penance
+47585,  -- Dispersion
+47788,  -- Guardian Spirit
+62618,  -- Power Word: Barrier
+64901,  -- Hymm of Hope
+64044,  -- Psychic Horror
+64843,  -- Divine Hymm
+73325,  -- Leap of Faith
+81206,  -- Chakra: Sanctuary
+81209,  -- Chakra: Chastise
+81208,  -- Chakra: Serenity
+81700,  -- Archangel
+88625,  -- Holy Word: Chastise
+88684,  -- Holy Word: Serenity
+88685,  -- Holy Word: Sanctuary
+89485,  -- Inner Focus
+108920, -- Void Tendrils
+108921, -- Psyfiend
+108968, -- Void Shift
+109964, -- Spirit Shell
+110744, -- Divine Star
+120517, -- Halo
+121135, -- Cascade
+121536, -- Angelic Feather
+123040, -- Mindbender
+129250, -- Power Word: Solace
+},
+--]]
+
+--[[
 local c = cooldown:new("player", 17) --pw:shield
 --print(c)
 local b = button:new("config",c)
@@ -180,10 +348,11 @@ local b = button:new("config",c)
 
 --b:set_cooldown(c)
 
+--]]
 
+local d = cooldown:new("player", "BackSlot")
 
-
-
+local f = button:new(default_button_config, d)
 
 
 
