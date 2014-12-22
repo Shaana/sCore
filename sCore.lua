@@ -27,6 +27,39 @@ local function init()
 		pp.init(config["pp"]["ui_scale"])
 	end
 	
+
+--[[
+	local object = CreateFrame("Frame",nil, UIParent)
+  sCore.pp.add_all(object)
+  object:SetPoint("CENTER",80,0)
+  object:SetSize(64,64)
+  object.icon = CreateFrame("Frame", nil, object)
+  object.icon.texture = object.icon:CreateTexture(nil, "BACKGROUND")
+  object.icon:SetAllPoints(object)
+  object.icon:SetFrameLevel(1)
+  object.icon.texture:SetAllPoints(object.icon)
+  object.icon.texture:SetTexture("Interface\\AddOns\\sBuff2\\media\\Border64")
+  object.icon.texture:SetVertexColor(0.4, 0.4, 0.4, 1)
+--]]
+
+--[[
+local c = cooldown:new("player", 17) --pw:shield
+--print(c)
+local b = button:new("config",c)
+--print(b)
+
+--b:set_cooldown(c)
+
+--]]
+  local cooldown = namespace.class.cooldown
+  local button = namespace.class.cooldown_button
+  
+  local d = cooldown:new("player", "BackSlot")
+  local f = button:new(default_button_config, d)
+	
+	
+	
+	
 	--[[
 
 	--frame one

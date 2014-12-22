@@ -89,7 +89,7 @@ function pp._load()
 	
 	--setting the multisampling to 1x (anti-aliasing)
 	-- If that doesn't work you must override the anti-aliasing for WoW through a configuration panel for your video card
-	SetMultisampleFormat(1)
+	--SetMultisampleFormat(1)
 	if pp._use_ui_scale == 1 then
   	SetCVar("uiScale", pp._ui_scale)
   end
@@ -202,14 +202,16 @@ function pp.method.SetBackdrop(frame, backdrop_table)
 		insets = { left = 0, right = 0, top = 0, bottom = 0 }.
 	}
 	--]]
+	--TODO disabled for know. Tests show that edgeSize and the insets DONT need to be scaled to achiev pixel perfection
 	local new_bd = core._table_copy(backdrop_table)
+	--[[
 	new_bd["tileSize"] = pp.scale(new_bd["tileSize"])
 	new_bd["edgeSize"] = pp.scale(new_bd["edgeSize"])
 	new_bd["insets"]["left"] = pp.scale(new_bd["insets"]["left"])
 	new_bd["insets"]["right"] = pp.scale(new_bd["insets"]["right"])
 	new_bd["insets"]["top"] = pp.scale(new_bd["insets"]["top"])
 	new_bd["insets"]["bottom"] = pp.scale(new_bd["insets"]["bottom"])
-	
+	--]]
 	pp._mapping[frame]["SetBackdrop"](frame, new_bd)
 end
 

@@ -50,6 +50,7 @@ local core = namespace.core
 --TODO upvalue
 
 local cooldown = {__instance = "cooldown"}
+namespace.class.cooldown = cooldown
 
 --Note: id can be both a spell_id (integer) or a slot_id (string) and even enemy cooldowns
 function cooldown.new(self, unit, id, duration, reset_spell_id)
@@ -170,57 +171,83 @@ end
 
 
 local button = {__instance = "cooldown_button"}
+namespace.class.cooldown_button = button
 
 local default_button_config = {
-  ["anchor"] = {"CENTER", 0, 50},
-  ["size"] = {200, 200},
+  ["anchor"] = {"CENTER", 0, 0},
+  ["size"] = 64, --only supporting squared buttons
   ["enable_tooltip"] = false,
   ["texture_border"] = nil,
   ["texture_background"] = nil,
+  ["texture_inset"] = 7,
+  ["enable_text"] = true,
+  ["text_font"] = {},
 }
+
+local backdrop = { 
+   -- bgFile = nil, --"Interface\\AddOns\\sCore\\media\\bg_flat", 
+    edgeFile = "Interface\\AddOns\\sCore\\media\\border",
+    --tile = false,
+   -- tileSize = 32, 
+    edgeSize = 16, 
+    insets = { 
+      left = 0, 
+      right = 0, 
+      top = 0, 
+      bottom = 0,
+    },
+  }
+
+
 
 function button.new(self, config, cooldown)
   local object = CreateFrame("Frame",nil, UIParent)
   
-  core.inherit(object, self)
+  sCore.pp.add_all(object)
   
+  core.inherit(object, self, true)
   
-  local backdrop = { 
-      bgFile = "Interface\\AddOns\\sCore\\media\\bg_flat", 
-      edgeFile = "Interface\\AddOns\\sCore\\media\\sEdgeFile",
-      tile = true,
-      tileSize = 16, 
-      edgeSize = 16, 
-      insets = { 
-        left = 0, 
-        right = 0, 
-        top = 0, 
-        bottom = 0,
-      },
-    }
-  
-  
-  
-  object.config = config
+  object.config = default_button_config -- config
   object.cooldown = nil
   
   object:SetPoint(unpack(object.config["anchor"]))
-  object:SetSize(unpack(object.config["size"]))
+  object:SetSize(object.config["size"], object.config["size"])
   
   object:SetFrameLevel(1)
   
   object:SetBackdrop(backdrop)
   object:SetBackdropColor(1,1,1,0)
-  object:SetBackdropBorderColor(0.5,0.5,0,1)
+  object:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+  
+  object.texture = object:CreateTexture(nil, "BACKGROUND")
   
   
   object.icon = CreateFrame("Frame", nil, object)
-  object.icon.texture = object.icon:CreateTexture(nil, "BACKGROUND")
-  
   object.icon:SetAllPoints(object)
   object.icon:SetFrameLevel(1)
   
-  object.icon.texture:SetAllPoints(object.icon)
+  --object.icon.texture = object.icon:CreateTexture(nil, "BACKGROUND")
+  
+  --TODO pp.add(texture, gloss, etc.)
+
+  local i = object.config["texture_inset"] --dont need to scale that --> scaled in setpoint
+  local j = i/object.config["size"] --what about that ? write a pp.settexcoord function prob not, cause scale(i)/scale(size) is smae as i/size (relative already)
+  
+--  object.icon.texture:SetPoint("TOPLEFT", i, -i)
+--  object.icon.texture:SetPoint("BOTTOMRIGHT", -i, i)
+--  object.icon.texture:SetTexCoord(j, 1-j, j, 1-j)
+  
+  object.texture:SetPoint("TOPLEFT", i, -i)
+  object.texture:SetPoint("BOTTOMRIGHT", -i, i)
+  object.texture:SetTexCoord(j, 1-j, j, 1-j)
+  
+  
+  object.texture:SetTexture(cooldown._texture)
+  
+  --object.icon:SetAllPoints(object)
+  --object.icon:SetFrameLevel(1)
+  
+  --object.icon.texture:SetAllPoints(object.icon)
   
   --object.icon:SetAlpha(0.2)
   
@@ -232,7 +259,11 @@ function button.new(self, config, cooldown)
   object.animation = CreateFrame("Cooldown", nil, object,  "CooldownFrameTemplate")
   object.animation:SetAllPoints(object)
   
-  object.text = object:CreateFontString(nil, 'OVERLAY')
+  object.text = object:CreateFontString(nil, "OVERLAY")
+  object.text:SetPoint("CENTER", 0,0)
+  object.text:SetFont("Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 22, "OUTLINE")
+  object.text:SetText("15")
+  
   
   if cooldown then
     object:set_cooldown(cooldown)
@@ -263,6 +294,7 @@ end
 
 
 local header = {__instance="cooldown_header"}
+namespace.class.cooldown_header = header
 
 local default_header_config = {
   ["anchor"] = {},
@@ -287,7 +319,6 @@ end
 function header.update(self)
 
 end
-
 
 
 
@@ -339,20 +370,6 @@ end
 129250, -- Power Word: Solace
 },
 --]]
-
---[[
-local c = cooldown:new("player", 17) --pw:shield
---print(c)
-local b = button:new("config",c)
---print(b)
-
---b:set_cooldown(c)
-
---]]
-
-local d = cooldown:new("player", "BackSlot")
-
-local f = button:new(default_button_config, d)
 
 
 
