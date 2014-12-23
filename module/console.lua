@@ -16,36 +16,20 @@ You should have received a copy of the GNU General Public License
 along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
-local setmetatable, pairs = setmetatable, pairs
 
 local addon, namespace = ...
 
-local config = {}
-namespace.config = config
+local core = namespace.core
 
----config section
-config["core"] = {
-	["is_a_really_cool_addon"] = true, --debug 
-}
-
-config["pp"] = {
-	["__index"] = config["core"],
-	["enable"] = true,
-	["ui_scale"] = 0.64, --nil or 0.64 to 1; nil turns it off
-}
-
-config["console"] = {
-	["enable"] = true,
-	
-}
-
-config["aura"] = {
-	
-}
+local console = {}
+namespace.core.console = console
 
 
---inheritance for the config
-for k,_ in pairs(config) do 
-	setmetatable(config[k], config[k])
+function console.new(self)
+
 end
+
+
+
+
 
