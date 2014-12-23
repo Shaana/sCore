@@ -29,7 +29,9 @@ function console.new(self)
 
 end
 
+function console.add_command(self, command, func)
 
+end
 
 
 

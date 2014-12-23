@@ -18,6 +18,67 @@ along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 
 local addon, namespace = ...
 
+--[[
+
+  --TODO (description, Example - test it)
+  pixel perfection (pp), 
+  e.g makes 1px borders look nice
+
+  Note:
+  
+    - In order to make pixel perfection work anti-aliasing needs to be turned off. This can generally
+      be done in the Wow video settings. In the case this doesn't work, one must override anti-aliasing
+      for Wow through the configuration panel of the video card
+   
+    - It is assumed that all the frames registered with pp have an effective scale equal to the 
+      UIParent's scale (which is equal to the UI scale)
+   
+    - Currently it is impossible to retrieve the UI scale CVar during the first code load. A solution
+      to this problem is to hard code the value. Hence, the desired UI scale value should be set 
+      in the 'config.lua' file. Under no circumstances is the UI scale to be changed in-game directly!
+
+  Methods:
+    
+    - Replaces a frames method with a scaled version of the same function. Individual methods or all
+      currently available methods can be replaced.
+    
+    pp.add(frame, method_name)
+    pp.add_all(frame)
+    
+    - Currently the following methods are scaled to achieve pixel perfection
+    
+    SetHeight
+    SetWidth
+    SetSize
+    SetPoint
+    SetBackdrop
+
+
+  Example:
+    
+    --create a frame with texture
+    local frame = CreateFrame("Frame", nil, UIParent)
+    
+    --enable pixel perfection for the frame (before using SetPoint, SetSize, ....)
+    sCore.pp.add_all(frame)
+    
+    frame:SetPoint("CENTER", 0, 0)
+    frame:SetSize(64, 64)
+    
+    --create the texture 
+    frame.texture = frame:CreateTexture(nil, "BACKGROUND")
+    
+    --enable pixel perfection for the texture, too
+    sCore.pp.add_all(frame.texture)
+    
+    frame.texture:SetAllPoints(frame)
+    frame.texture:SetTexture(0.5, 0.5, 0.5)
+    
+
+    
+--]]
+
+
 
 --upvalue
 local string_match = string.match
@@ -31,8 +92,6 @@ local core = namespace.core
 local pp = {method = {}}
 namespace.core.pp = pp
 
---Note: Asuming Scale of every frame is 1 and parent tree ends with UIParent
---check http://nclabs.org/articles/2
 
 --note:	its not a class, you can't make multiple objects.
 
@@ -87,9 +146,6 @@ end
 function pp._load()
 	assert(pp._object, "pp not initialized") 
 	
-	--setting the multisampling to 1x (anti-aliasing)
-	-- If that doesn't work you must override the anti-aliasing for WoW through a configuration panel for your video card
-	--SetMultisampleFormat(1)
 	if pp._use_ui_scale == 1 then
   	SetCVar("uiScale", pp._ui_scale)
   end
@@ -129,20 +185,10 @@ function pp.add_all(frame)
 end
 
 
---TODO write those two functions should they ever be needed ...
-function pp.remove(frame, method_name)
-
-end
-
-
-function pp.remove_all(frame)
-
-end
-
-
 function pp.scale(num_pixels)
     return pp._scale_factor * floor(num_pixels + .5)
 end
+
 
 function pp.get_scale_factor()
 	return pp._scale_factor
@@ -215,6 +261,9 @@ function pp.method.SetBackdrop(frame, backdrop_table)
 	pp._mapping[frame]["SetBackdrop"](frame, new_bd)
 end
 
---TODO there are more functions like setMaxResize
+
+
+
+
 
 
