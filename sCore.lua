@@ -53,10 +53,12 @@ local b = button:new("config",c)
 --]]
   local cooldown = namespace.class.cooldown
   local button = namespace.class.cooldown_button
+  local header = namespace.class.cooldown_header
   
   local d = cooldown:new("player", 8122) --"BackSlot"
   local f = button:new(nil, d)
 	
+	local h = header:new()
 	
 	
 	

@@ -54,6 +54,9 @@ local core = namespace.core
 local cooldown = {__instance = "cooldown"}
 namespace.class.cooldown = cooldown
 
+--TODO add global cooldown directory, if same cooldown is registered twice, simply return the one in the directory instead of creating it twice
+--TODO somehow remove the gcd from being shown
+
 --Note: id can be both a spell_id (integer) or a slot_id (string) and even enemy cooldowns
 function cooldown.new(self, unit, id, duration, reset_spell_id)
   local object = CreateFrame("Frame", nil, UIParent)
@@ -100,7 +103,8 @@ function cooldown.track(self)
   self:RegisterEvent("PLAYER_ENTERING_WORLD")
   
   if self._type == 0 then
-    self:RegisterEvent("SPELL_UPDATE_USABLE")
+    --self:RegisterEvent("SPELL_UPDATE_USABLE")
+    self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
   elseif self._type == 1 then
     --Note: an item might be switched, update texture
     self:RegisterEvent("UNIT_INVENTORY_CHANGED")
@@ -188,7 +192,7 @@ local backdrop = {
 
 local default_button_config = {
   ["anchor"] = {"CENTER", 0, 0},
-  ["size"] = 64, --only supporting squared buttons, use even number to make it look nice
+  ["size"] = 48, --only supporting squared buttons, use even number to make it look nice
   ["backdrop"] = backdrop,
   ["border_color"] = {0.4, 0.4, 0.4, 1},
   ["enable_tooltip"] = false,
@@ -292,6 +296,11 @@ function button._update_text(self, elapsed)
   
   self.text:SetText(core.format_time(remaining))
   
+--TODO instead add a c_timer to the cooldown class, that does basically that
+  if remaining < 0 then
+    print(remaining)
+    self._cooldown:update()
+  end
   
 end
 
@@ -311,27 +320,56 @@ local header = {__instance="cooldown_header"}
 namespace.class.cooldown_header = header
 
 local default_header_config = {
-  ["anchor"] = {},
+  ["anchor"] = {"CENTER",-420,-185},
   ["horizontal_spacing"] = 5,
   ["vertical_spacing"] = 5,
   ["grow_direction"] = "LEFTUP",
-  ["spell_ids"] = {nil},
+  ["spell_ids"] = {
+    "Trinket0Slot",
+    47585,  -- Dispersion
+    15487,  -- Silence
+    8122, -- Psychic Scream
+    6346, -- Fear Ward
+    120517, -- Halo
+    8092, -- Mind Blast
+  },
 }
 
 function header.new(self, config, button_config)
   local object =  CreateFrame("Frame",nil, UIParent)
+  
+  core.pp.add_all(object)
   core.inherit(object, self)
   
-  for i=1, #config["spell_ids"] do
-    
-    button:new(button_config)
+  object.config = config  or default_header_config
+  --TODO make a copy, so we can change anchor and wont affect things ...
+  object.button_config = button_config or default_button_config
+  
+  object:SetSize(40,40)
+  object:SetPoint(unpack(object.config["anchor"]))
+  
+  object.button_config["size"] = 36
+  
+  local x, y
+  local h_dist = 0
+  local x_size = object.button_config["size"]
+  --local cur_anch = {}
+  for i=1, #object.config["spell_ids"] do
+    x = (h_dist + x_size)*(i % 12)
+    y = 0 
+    cur_anch = {"TOPLEFT", object, "TOPLEFT", x, y}
+    object.button_config["anchor"] = cur_anch
+    local c = cooldown:new("player", object.config["spell_ids"][i])
+    button:new(object.button_config, c)
   end
   
   return object
 end
 
-function header.update(self)
 
+--TODO, when config is reloaded ?
+function header.update(self)
+  
 end
 
 
