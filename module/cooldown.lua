@@ -49,6 +49,8 @@ local core = namespace.core
 
 --TODO upvalue
 
+--TODO implement core.pp property that the whole thing also works then it's disabled
+
 local cooldown = {__instance = "cooldown"}
 namespace.class.cooldown = cooldown
 
@@ -60,7 +62,7 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
   
   object._unit = unit
   object._id = id
-  object._start, object._duration = 0, 0
+  object._start, object._duration = -1, -1 --using impossible values to force at least one update
   
   --the cooldown_button class can register buttons here, which will be updated On_event
   object._button = {}
@@ -89,7 +91,11 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
   return object
 end
 
-
+--TODO need to track more cooldowns
+--especially when cooldown finishes, SPELL_UPDATE_USABLE is not called immediately
+--a solution to this might be to check in the update_text function if remaining goes below 0, if so --> update
+--test with cooldown reset spells !
+ 
 function cooldown.track(self)
   self:RegisterEvent("PLAYER_ENTERING_WORLD")
   
@@ -114,6 +120,9 @@ end
 
 
 function cooldown.update(self, event, arg)
+  --TODO remove
+  print(event)
+  --TODO update texture as well when entering world, not the case here
   if event == "UNIT_INVENTORY_CHANGED" and arg == self._unit then
     self._texture = GetInventoryItemTexture(self._unit, self._id)
     for i=1, #self._button do
@@ -134,9 +143,8 @@ function cooldown.update(self, event, arg)
     for i=1, #self._button do
       self._button[i]:update()
     end
---  else
---    print("droping update")
---    print(self._type)
+  else
+    print("droping update")
   end
   
   
@@ -173,112 +181,118 @@ end
 local button = {__instance = "cooldown_button"}
 namespace.class.cooldown_button = button
 
+local backdrop = { 
+    edgeFile = "Interface\\AddOns\\sCore\\media\\border",
+    edgeSize = 16, 
+  }
+
 local default_button_config = {
   ["anchor"] = {"CENTER", 0, 0},
-  ["size"] = 64, --only supporting squared buttons
+  ["size"] = 64, --only supporting squared buttons, use even number to make it look nice
+  ["backdrop"] = backdrop,
+  ["border_color"] = {0.4, 0.4, 0.4, 1},
   ["enable_tooltip"] = false,
   ["texture_border"] = nil,
   ["texture_background"] = nil,
-  ["texture_inset"] = 7,
+  ["texture_desaturate"] = true,
+  ["texture_inset"] = 6, --really chrange, backdrop seams to be off by 1px, the border is actually 7px
   ["enable_text"] = true,
-  ["text_font"] = {},
+  ["text_font"] = {"Interface\\AddOns\\sCore\\media\\big_noodle_titling.ttf", 19, "OUTLINE"},
 }
 
-local backdrop = { 
-   -- bgFile = nil, --"Interface\\AddOns\\sCore\\media\\bg_flat", 
-    edgeFile = "Interface\\AddOns\\sCore\\media\\border",
-    --tile = false,
-   -- tileSize = 32, 
-    edgeSize = 16, 
-    insets = { 
-      left = 0, 
-      right = 0, 
-      top = 0, 
-      bottom = 0,
-    },
-  }
 
-
-
+--TODO consistancy with _ and dropping it
 function button.new(self, config, cooldown)
   local object = CreateFrame("Frame",nil, UIParent)
   
-  sCore.pp.add_all(object)
+  core.pp.add_all(object)
   
   core.inherit(object, self, true)
-  
-  object.config = default_button_config -- config
-  object.cooldown = nil
+    
+  object.config = config or default_button_config --TODO change to config
+  object._cooldown = cooldown
   
   object:SetPoint(unpack(object.config["anchor"]))
   object:SetSize(object.config["size"], object.config["size"])
-  
   object:SetFrameLevel(1)
   
-  object:SetBackdrop(backdrop)
-  object:SetBackdropColor(1,1,1,0)
-  object:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+  object:SetBackdrop(object.config["backdrop"])
+  object:SetBackdropBorderColor(unpack(object.config["border_color"]))
   
-  object.texture = object:CreateTexture(nil, "BACKGROUND")
-  
-  
-  object.icon = CreateFrame("Frame", nil, object)
-  object.icon:SetAllPoints(object)
-  object.icon:SetFrameLevel(1)
-  
-  --object.icon.texture = object.icon:CreateTexture(nil, "BACKGROUND")
-  
-  --TODO pp.add(texture, gloss, etc.)
-
+  --Note: don't need to scale, cause SetPoint will be scalled
   local i = object.config["texture_inset"] --dont need to scale that --> scaled in setpoint
   local j = i/object.config["size"] --what about that ? write a pp.settexcoord function prob not, cause scale(i)/scale(size) is smae as i/size (relative already)
   
---  object.icon.texture:SetPoint("TOPLEFT", i, -i)
---  object.icon.texture:SetPoint("BOTTOMRIGHT", -i, i)
---  object.icon.texture:SetTexCoord(j, 1-j, j, 1-j)
+  object.texture = object:CreateTexture(nil, "BACKGROUND")
+  core.pp.add_all(object.texture)
   
   object.texture:SetPoint("TOPLEFT", i, -i)
   object.texture:SetPoint("BOTTOMRIGHT", -i, i)
   object.texture:SetTexCoord(j, 1-j, j, 1-j)
-  
-  
-  object.texture:SetTexture(cooldown._texture)
-  
-  --object.icon:SetAllPoints(object)
-  --object.icon:SetFrameLevel(1)
-  
-  --object.icon.texture:SetAllPoints(object.icon)
-  
-  --object.icon:SetAlpha(0.2)
-  
-  --local a = object.icon.texture:SetDesaturated(true)
-  --print("support")
-  --print(a)
-  
+    
   --Note: apparently the frame needs to inherit  from CooldownFrameTemplate in order to work 
   object.animation = CreateFrame("Cooldown", nil, object,  "CooldownFrameTemplate")
-  object.animation:SetAllPoints(object)
+  core.pp.add_all(object.animation)
+  
+  object.animation:SetFrameLevel(1)
+  object.animation:SetPoint("TOPLEFT", i, -i)
+  object.animation:SetPoint("BOTTOMRIGHT", -i, i)
+  object.animation:SetDrawEdge(false)
   
   object.text = object:CreateFontString(nil, "OVERLAY")
   object.text:SetPoint("CENTER", 0,0)
-  object.text:SetFont("Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 22, "OUTLINE")
-  object.text:SetText("15")
-  
+  --object.text:SetFont(unpack(object.config["text_font"])) --not working
+  object.text:SetFont("Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 19, "OUTLINE")
   
   if cooldown then
     object:set_cooldown(cooldown)
   end
+
+  --TODO, remove
+  object._last_text_update = 0
 
   return object
 end
 
 
 function button.update(self)
-  --local start, duration = GetSpellCooldown("Spell Name")
-  --myCooldown:SetCooldown(start, duration)
-  --print("update button") 
-  --self.animation:SetCooldown(GetTime(), 120)
-  self.animation:SetCooldown(self.cooldown._start, self.cooldown._duration)
+  assert(self._cooldown, "no cd set to button")
+  
+  --update texture in any case
+  --TODO remove, only upate if needed
+  self.texture:SetTexture(self._cooldown._texture)
+  
+  --on cooldown
+  if self._cooldown._duration > 0 then
+    self.texture:SetDesaturated(self.config["texture_desaturate"]) --grey style
+    self:SetAlpha(0.8)
+    self.animation:SetCooldown(self._cooldown._start, self._cooldown._duration)
+    self:SetScript("OnUpdate", self._update_text)
+  
+  --ready  
+  else
+    self.texture:SetDesaturated(false)
+    self:SetAlpha(1)
+    self.text:SetText("")
+    self:SetScript("OnUpdate", nil)
+  end
+
+end
+
+function button._update_text(self, elapsed)
+--  if self._last_text_update < self.update_frequency then 
+--    self._last_text_update = self._last_text_update + elapsed
+--    return
+--  end
+  
+  self._last_text_update = 0
+  
+  local start, duration = self._cooldown._start, self._cooldown._duration
+  local remaining = duration - (GetTime() - start)
+  
+  self.text:SetText(core.format_time(remaining))
+  
+  
 end
 
 function button.update_texture(self)
@@ -288,7 +302,7 @@ end
 
 function button.set_cooldown(self, cooldown)
   table.insert(cooldown._button, self)
-  self.cooldown = cooldown
+  self._cooldown = cooldown
   --self.icon.texture:SetTexture(cooldown._texture)
 end
 

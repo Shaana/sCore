@@ -19,7 +19,7 @@ along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 local addon, namespace = ...
 
 local config = namespace.config
-local pp = namespace.pp
+local pp = namespace.core.pp
 
 local function init()
 
@@ -54,8 +54,8 @@ local b = button:new("config",c)
   local cooldown = namespace.class.cooldown
   local button = namespace.class.cooldown_button
   
-  local d = cooldown:new("player", "BackSlot")
-  local f = button:new(default_button_config, d)
+  local d = cooldown:new("player", 8122) --"BackSlot"
+  local f = button:new(nil, d)
 	
 	
 	

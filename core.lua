@@ -30,12 +30,15 @@ namespace.core = core
 local class = {}
 namespace.class = class
 
+
+
 local function is_instance(object, class)
   if object.__instance == class.__instance then
     return true
   end
   return false
 end
+core.is_instance = is_instance
 
 --This is the new version of the inherit function and will replace _inherit in the future
 local function inherit(object, class, secure)
@@ -60,6 +63,7 @@ local function inherit(object, class, secure)
 end
 core.inherit = inherit
 
+--TODO outdated, use upper inherit function
 --inherit function for lua class implementations
 local function _inherit(object, class)	
 	assert(type(class) == "table")
@@ -67,7 +71,8 @@ local function _inherit(object, class)
 		object[k] = v
 	end
 end
-core._inherit = _inherit
+core._inherit = _inherit 
+
 
 --deep table copy function
 local function _table_copy(t)
@@ -88,7 +93,34 @@ local function _table_copy(t)
 	setmetatable(new_table, mt)
 	return new_table
 end
-core._table_copy = _table_copy
+core._table_copy = _table_copy --TODO remove _
+
+
+local function si_value(value)
+  if value >= 1e6 then
+    return ("%.0f m"):format(value*1e-6)
+  elseif value >= 1e3 then
+    return ("%.0f k"):format(value*1e-3)
+  else
+    return value
+  end
+end
+core.si_value = si_value
+
+local function format_time(time, show_msec, show_sec, show_min, show_hour)
+  if time < (show_msec or 2) then
+    return ("%.1f s"):format(time)
+  elseif time < (show_sec or 60) then
+    return ("%.0f s"):format(time)
+  elseif time < (show_min or 3600) then --60*60
+    return ("%.0f m"):format(time/60)
+  elseif time < (show_hour or 86400) then --60*60*24
+    return ("%.0f h"):format(time/3600)
+  else
+    return ("%.0f d"):format(time/86400)
+  end
+end
+core.format_time = format_time
 
 
 

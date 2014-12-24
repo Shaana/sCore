@@ -29,7 +29,7 @@ local CreateFrame, GetScreenResolutions, GetCurrentResolution = CreateFrame, Get
 local core = namespace.core
 
 local pp = {method = {}}
-namespace.pp = pp
+namespace.core.pp = pp
 
 --Note: Asuming Scale of every frame is 1 and parent tree ends with UIParent
 --check http://nclabs.org/articles/2
