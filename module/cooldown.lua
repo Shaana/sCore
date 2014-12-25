@@ -134,7 +134,7 @@ end
 
 function cooldown.update(self, event, arg)
   --TODO remove
-  print(event)
+  --print(event)
   --TODO update texture as well when entering world, not the case here
   if event == "UNIT_INVENTORY_CHANGED" and arg == self._unit then
     self._texture = GetInventoryItemTexture(self._unit, self._id)
@@ -157,6 +157,20 @@ function cooldown.update(self, event, arg)
   if not (self._duration == duration and self._start == start) then
     --(duration > 1.5 or duration == 0)
     if (duration > 1.5 or duration == 0) then
+      --TODO make it nicer code ...
+      --Note: force update after cooldown expired
+      if duration > 0 then
+        print("adding callback")
+      --TODO check again: duration might be enough, (...) obsolete, cause always 0 anyway
+      --for some reason this is called twice ...
+      --noticed that this is the case when two frames are registered with the cooldown....
+        C_Timer.After(duration - (GetTime() - start), function() 
+        print("callback")
+        self:update()
+        end)
+      end
+      
+      
       self._start, self._duration = start, duration
       --TODO remove
       --for i=1, #self._button do
@@ -165,10 +179,10 @@ function cooldown.update(self, event, arg)
         button:update()
       end
     else
-      print(duration)
+      --print(duration)
     end
   else
-    print("droping update")
+    --print("droping update")
   end
   
   
@@ -339,10 +353,11 @@ function button._update_text(self, elapsed)
   self.text:SetText(core.format_time(remaining))
   
 --TODO instead add a c_timer to the cooldown class, that does basically that
-  if remaining < 0 then
-    print(remaining)
-    self._cooldown:update()
-  end
+--doesnt belong here, should be in the cd class
+--  if remaining < 0 then
+--    print(remaining)
+--    self._cooldown:update()
+--  end
   
 end
 
