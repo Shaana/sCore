@@ -51,7 +51,10 @@ local core = namespace.core
 
 --TODO implement core.pp property that the whole thing also works then it's disabled
 
-local cooldown = {__instance = "cooldown"}
+local cooldown = {
+  __instance = "cooldown",
+  __cooldowns = {},
+}
 namespace.class.cooldown = cooldown
 
 --TODO add global cooldown directory, if same cooldown is registered twice, simply return the one in the directory instead of creating it twice
@@ -59,13 +62,19 @@ namespace.class.cooldown = cooldown
 
 --Note: id can be both a spell_id (integer) or a slot_id (string) and even enemy cooldowns
 function cooldown.new(self, unit, id, duration, reset_spell_id)
+--  local guid = UnitGUID(unit)
+--  
+--  if cooldown.__cooldowns[guid] and cooldown.__cooldowns[guid][id] then
+--    return cooldown.__cooldowns[guid][id]
+--  end
+
   local object = CreateFrame("Frame", nil, UIParent)
   
   core.inherit(object, self)
   
   object._unit = unit
   object._id = id
-  object._start, object._duration = -1, -1 --using impossible values to force at least one update
+  object._start, object._duration = 0, 0 ---1, -1 --using impossible values to force at least one update
   
   --the cooldown_button class can register buttons here, which will be updated On_event
   object._button = {}
@@ -129,8 +138,9 @@ function cooldown.update(self, event, arg)
   --TODO update texture as well when entering world, not the case here
   if event == "UNIT_INVENTORY_CHANGED" and arg == self._unit then
     self._texture = GetInventoryItemTexture(self._unit, self._id)
-    for i=1, #self._button do
-      self._button[i]:update_texture()
+    for button,_ in pairs(self._button) do
+      --self._button[]:update()
+      button:update()
     end
   end
   
@@ -142,10 +152,20 @@ function cooldown.update(self, event, arg)
     start, duration = GetInventoryItemCooldown(self._unit, self._id)
   end
   
-  if not (self._start == start and self._duration == duration) then
-    self._start, self._duration = start, duration
-    for i=1, #self._button do
-      self._button[i]:update()
+  
+  --TODO test gcd stop and add option 
+  if not (self._duration == duration and self._start == start) then
+    --(duration > 1.5 or duration == 0)
+    if (duration > 1.5 or duration == 0) then
+      self._start, self._duration = start, duration
+      --TODO remove
+      --for i=1, #self._button do
+      for button,_ in pairs(self._button) do
+        --self._button[]:update()
+        button:update()
+      end
+    else
+      print(duration)
     end
   else
     print("droping update")
@@ -180,6 +200,23 @@ function cooldown.update(self, event, arg)
   
 end
 
+
+function cooldown.register(self, frame)
+  if not self._button[frame] then
+    self._button[frame] = true
+    return true
+  end
+  return false
+end
+
+
+function cooldown.unregister(self, frame)
+  if self._button[frame] then
+    self._button[frame] = nil
+    return true
+  end
+  return false
+end
 
 
 local button = {__instance = "cooldown_button"}
@@ -246,7 +283,8 @@ function button.new(self, config, cooldown)
   object.text = object:CreateFontString(nil, "OVERLAY")
   object.text:SetPoint("CENTER", 0,0)
   --object.text:SetFont(unpack(object.config["text_font"])) --not working
-  object.text:SetFont("Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 19, "OUTLINE")
+  object.text:SetFont("Interface\\AddOns\\sCore\\media\\big_noodle_titling.ttf", 19, "OUTLINE")
+  --"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 19, "OUTLINE")
   
   if cooldown then
     object:set_cooldown(cooldown)
@@ -263,7 +301,7 @@ function button.update(self)
   assert(self._cooldown, "no cd set to button")
   
   --update texture in any case
-  --TODO remove, only upate if needed
+  --TODO remove, only upate if needed, or maybe always, function not called often anyway
   self.texture:SetTexture(self._cooldown._texture)
   
   --on cooldown
@@ -277,8 +315,12 @@ function button.update(self)
   else
     self.texture:SetDesaturated(false)
     self:SetAlpha(1)
-    self.text:SetText("")
+    --TODO when switching trinkets, the animation doesn't stop
+    --StopAnimating() not working ?
+    --self.animation:StopAnimating()
+    self.animation:SetCooldown(0,0) 
     self:SetScript("OnUpdate", nil)
+    self.text:SetText("")
   end
 
 end
@@ -304,15 +346,13 @@ function button._update_text(self, elapsed)
   
 end
 
-function button.update_texture(self)
-  --self.icon.texture:SetTexture(self.cooldown._texture)
-end
-
 
 function button.set_cooldown(self, cooldown)
-  table.insert(cooldown._button, self)
-  self._cooldown = cooldown
-  --self.icon.texture:SetTexture(cooldown._texture)
+  --TODO check cooldown:register() return code. act accordingly
+  if cooldown:register(self) then
+    self._cooldown = cooldown
+    self:update()
+  end
 end
 
 
