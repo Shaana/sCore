@@ -60,46 +60,102 @@ namespace.class.cooldown = cooldown
 --TODO add global cooldown directory, if same cooldown is registered twice, simply return the one in the directory instead of creating it twice
 --TODO somehow remove the gcd from being shown
 
+
+cooldown.__init = {
+  --player or pet spell cooldown
+  [0] = function(self)
+      _,_, self._texture = GetSpellInfo(self._id)
+      --self.update = self.update
+    end,
+  --player slot cooldown
+  [1] = function(self)
+      self._property.slot_id = GetInventorySlotInfo(self._id)
+      self._texture = GetInventoryItemTexture(self._unit, self._id)
+      --self.update = self.update
+    end,
+  --player talent cooldown
+  [2] = function(self)
+      self.update = self._update_talent
+    end,
+  --enemy spell cooldown
+  [3] = function(self)
+      self.update = self._update_enemy_spell
+    end,
+    
+}
+
 --Note: id can be both a spell_id (integer) or a slot_id (string) and even enemy cooldowns
 function cooldown.new(self, unit, id, duration, reset_spell_id)
---  local guid = UnitGUID(unit)
---  
---  if cooldown.__cooldowns[guid] and cooldown.__cooldowns[guid][id] then
---    return cooldown.__cooldowns[guid][id]
---  end
+  --TODO guid is only available after the player enter world or something ...
+  local guid = "player" --UnitGUID(unit)
+  
+  --TODO this might cause problems, cooldowns could unintentionally get untracked
+  --solution: make track/untrack private functions. Only track cooldown if one or more frames are registered
+  if cooldown.__cooldowns[guid] then
+    if cooldown.__cooldowns[guid][id] then
+      cooldown.__cooldowns[guid][id]:_track()
+      return cooldown.__cooldowns[guid][id]
+    end
+  else
+    cooldown.__cooldowns[guid] = {}
+  end
 
   local object = CreateFrame("Frame", nil, UIParent)
   
   core.inherit(object, self)
   
   object._unit = unit
+  object._active = false
   object._id = id
-  object._start, object._duration = 0, 0 ---1, -1 --using impossible values to force at least one update
+  object._start, object._duration = 0, 0
+  object._property = {} -- cooldown specific properties
   
   --the cooldown_button class can register buttons here, which will be updated On_event
-  object._button = {}
+  object._frames = {}
   
-  --spell cooldown
-  if type(id) == "number" then
-    _,_, object._texture = GetSpellInfo(id) --object.name
-    object._type = 0
+  --Note: 
+  if type(object._id) == "number" then
+    if object._unit == "player" or object._unit == "pet" then
+      object._case = 0
+    else
+      object._case = 3
+    end
     
   --item cooldown (slot name is given)
   elseif type(id) == "string" then
-    --Note: we save the numeric slot identifier not the slot_name passed to cooldown.new function
-    object._id = GetInventorySlotInfo(id)
-    object._texture = GetInventoryItemTexture(unit, object._id)
-    object._type = 1
-
-  --TODO
-  --enemy cooldown
-  --elseif not (unit == "player" or unit == "pet") then
-    --object._type = 2
+    local s, e, m = string.find(object._id, "^t([0-9])$")
+    if s then
+      object._case = 2
+      --TODO
+      -- scan tier for spells with base_cooldown, register a new cooldown:new(id)
+      -- track/untrack spells that are currently picked by the player/unit
+      object._property.tier = m
+      object._property.cds = {}
+      
+      --cooldown = GetSpellBaseCooldown(id) --returns 0, if no cd and nil if error
+      
+      
+      --local talent_id, spell_name, spell_texture = GetTalentInfo(object._tier, 1, 2) --GetTalentInfo(tier, column, talentGroup[, isInspect, inspectedUnit])
+      --local _, talentName = GetTalentInfoByID(talent_id, 2); --DONT NEED THAT
+      
+      --This will return the right spell depending on spec
+      --but only if the talent is picked and in the spell book ... (unless spell_id is used)
+      --name, rank, icon, castTime, minRange, maxRange, spellId = GetSpellInfo(spell_name)
+      
+      --self:RegisterEvent("PREVIEW_TALENT_POINTS_CHANGED");
+      --self:RegisterEvent("PLAYER_TALENT_UPDATE");
+    else
+      --Note: we save the numeric slot identifier not the slot_name passed to cooldown.new function
+      object._case = 1
+    end
   end
 
+  cooldown.__init[object._case](object)
+
   object:SetScript("OnEvent", self.update) 
-  object:track()
+  object:_track()
   
+  cooldown.__cooldowns[guid][id] = object
   return object
 end
 
@@ -108,48 +164,71 @@ end
 --a solution to this might be to check in the update_text function if remaining goes below 0, if so --> update
 --test with cooldown reset spells !
  
-function cooldown.track(self)
-  self:RegisterEvent("PLAYER_ENTERING_WORLD")
-  
-  if self._type == 0 then
-    --self:RegisterEvent("SPELL_UPDATE_USABLE")
-    self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
-  elseif self._type == 1 then
-    --Note: an item might be switched, update texture
-    self:RegisterEvent("UNIT_INVENTORY_CHANGED")
-    --Note: BAG_UPDATE_COOLDOWN fires every 3-5 seconds for no apparent reason 
-    self:RegisterEvent("BAG_UPDATE_COOLDOWN")
-  elseif self._type == 2 then
-  
-  elseif self._type == 3 then
-  
+cooldown.__event = {
+  [0] = {
+    "SPELL_UPDATE_COOLDOWN",
+    },
+  [1] = {
+    "UNIT_INVENTORY_CHANGED",
+    "BAG_UPDATE_COOLDOWN",
+    },
+  [2] = {
+    "PREVIEW_TALENT_POINTS_CHANGED",
+    "PLAYER_TALENT_UPDATE",
+    "ACTIVE_TALENT_GROUP_CHANGED",
+  }
+}
+ 
+function cooldown._track(self)
+  if not self._active then
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
+    
+    for i,v in ipairs(cooldown.__event[self._case]) do
+      print(i,v)
+      self:RegisterEvent(v)
+    end
+    
+--    if self._type == 0 then --case[0]
+--      --self:RegisterEvent("SPELL_UPDATE_USABLE")
+--      self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+--    elseif self._type == 1 then
+--      --Note: an item might be switched, update texture
+--      self:RegisterEvent("UNIT_INVENTORY_CHANGED")
+--      --Note: BAG_UPDATE_COOLDOWN fires every 3-5 seconds for no apparent reason 
+--      self:RegisterEvent("BAG_UPDATE_COOLDOWN")
+--    end
   end
 end
 
 
-function cooldown.untrack(self)
+function cooldown._untrack(self)
   self:UnregisterAllEvents()
+  self._active = false
+end
+
+--Note: if it's a talent cooldown this function is internally overwritten
+function cooldown.info(self)
+  return self._start, self._duration, self._texture
 end
 
 
 function cooldown.update(self, event, arg)
   --TODO remove
-  --print(event)
+  print(event)
   --TODO update texture as well when entering world, not the case here
   if event == "UNIT_INVENTORY_CHANGED" and arg == self._unit then
-    self._texture = GetInventoryItemTexture(self._unit, self._id)
-    for button,_ in pairs(self._button) do
-      --self._button[]:update()
-      button:update()
+    self._texture = GetInventoryItemTexture(self._unit, self._property.slot_id)
+    for frame,_ in pairs(self._frames) do
+      frame:update()
     end
   end
   
   local start, duration
   
-  if self._type == 0 then
+  if self._case == 0 then
     start, duration = GetSpellCooldown(self._id)
-  elseif self._type == 1 then
-    start, duration = GetInventoryItemCooldown(self._unit, self._id)
+  elseif self._case == 1 then
+    start, duration = GetInventoryItemCooldown(self._unit, self._property.slot_id)
   end
   
   
@@ -161,9 +240,7 @@ function cooldown.update(self, event, arg)
       --Note: force update after cooldown expired
       if duration > 0 then
         print("adding callback")
-      --TODO check again: duration might be enough, (...) obsolete, cause always 0 anyway
-      --for some reason this is called twice ...
-      --noticed that this is the case when two frames are registered with the cooldown....
+        --Note: (GetTime() - start) is NOT zero as one might expect
         C_Timer.After(duration - (GetTime() - start), function() 
         print("callback")
         self:update()
@@ -174,9 +251,9 @@ function cooldown.update(self, event, arg)
       self._start, self._duration = start, duration
       --TODO remove
       --for i=1, #self._button do
-      for button,_ in pairs(self._button) do
+      for frame,_ in pairs(self._frames) do
         --self._button[]:update()
-        button:update()
+        frame:update()
       end
     else
       --print(duration)
@@ -210,14 +287,27 @@ function cooldown.update(self, event, arg)
     end
   end
   --]]
-  
+end
+
+
+function cooldown._update_spell(self, event, arg)
+
+end
+
+
+function cooldown._update_slot(self, event, arg)
+
+end
+
+
+function cooldown._update_talent(self, event, arg)
   
 end
 
 
 function cooldown.register(self, frame)
-  if not self._button[frame] then
-    self._button[frame] = true
+  if not self._frames[frame] then
+    self._frames[frame] = true
     return true
   end
   return false
@@ -225,8 +315,8 @@ end
 
 
 function cooldown.unregister(self, frame)
-  if self._button[frame] then
-    self._button[frame] = nil
+  if self._frames[frame] then
+    self._frames[frame] = nil
     return true
   end
   return false
@@ -242,8 +332,8 @@ local backdrop = {
   }
 
 local default_button_config = {
-  ["anchor"] = {"CENTER", 0, 0},
-  ["size"] = 48, --only supporting squared buttons, use even number to make it look nice
+  ["anchor"] = {"LEFT", 0, 0},
+  ["size"] = 64, --only supporting squared buttons, use even number to make it look nice
   ["backdrop"] = backdrop,
   ["border_color"] = {0.4, 0.4, 0.4, 1},
   ["enable_tooltip"] = false,
@@ -276,7 +366,8 @@ function button.new(self, config, cooldown)
   
   --Note: don't need to scale, cause SetPoint will be scalled
   local i = object.config["texture_inset"] --dont need to scale that --> scaled in setpoint
-  local j = i/object.config["size"] --what about that ? write a pp.settexcoord function prob not, cause scale(i)/scale(size) is smae as i/size (relative already)
+  --local j = i/object.config["size"] --what about that ? write a pp.settexcoord function prob not, cause scale(i)/scale(size) is smae as i/size (relative already)
+  local j = 5/64 --0.0625 --4/64
   
   object.texture = object:CreateTexture(nil, "BACKGROUND")
   core.pp.add_all(object.texture)

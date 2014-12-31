@@ -130,6 +130,7 @@ function pp.init(ui_scale)
 		end	
 
 		pp._object:RegisterEvent("VARIABLES_LOADED")
+		--pp._object:RegisterEvent("UI_SCALE_CHANGED")
 		pp._object:SetScript("OnEvent", pp._load)
 	end
 end
@@ -249,15 +250,15 @@ function pp.method.SetBackdrop(frame, backdrop_table)
 	}
 	--]]
 	--TODO disabled for know. Tests show that edgeSize and the insets DONT need to be scaled to achiev pixel perfection
+	--TODO when creating the backdrop table, it's possible that certain values are nil, handle it
 	local new_bd = core._table_copy(backdrop_table)
-	--[[
-	new_bd["tileSize"] = pp.scale(new_bd["tileSize"])
-	new_bd["edgeSize"] = pp.scale(new_bd["edgeSize"])
-	new_bd["insets"]["left"] = pp.scale(new_bd["insets"]["left"])
-	new_bd["insets"]["right"] = pp.scale(new_bd["insets"]["right"])
-	new_bd["insets"]["top"] = pp.scale(new_bd["insets"]["top"])
-	new_bd["insets"]["bottom"] = pp.scale(new_bd["insets"]["bottom"])
-	--]]
+
+	--new_bd["tileSize"] = pp.scale(new_bd["tileSize"])
+	--new_bd["edgeSize"] = pp.scale(new_bd["edgeSize"])
+	--new_bd["insets"]["left"] = pp.scale(new_bd["insets"]["left"])
+	--new_bd["insets"]["right"] = pp.scale(new_bd["insets"]["right"])
+	--new_bd["insets"]["top"] = pp.scale(new_bd["insets"]["top"])
+	--new_bd["insets"]["bottom"] = pp.scale(new_bd["insets"]["bottom"])
 	pp._mapping[frame]["SetBackdrop"](frame, new_bd)
 end
 

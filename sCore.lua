@@ -56,11 +56,83 @@ local b = button:new("config",c)
   local header = namespace.class.cooldown_header
   
   local d = cooldown:new("player", 8122) --"BackSlot"
+  --local d = cooldown:new("player", "t7") --"BackSlot"
   local f = button:new(nil, d)
 	
-	local h = header:new()
+	--local h = header:new()
 	
+	local backdrop = { 
+    edgeFile = "Interface\\AddOns\\sCore\\media\\border",
+    edgeSize = 16, 
+  }
 	
+	local b2_config = {
+    ["anchor"] = {"LEFT", 80, 0},
+    ["size"] = 64, --only supporting squared buttons, use even number to make it look nice
+    ["backdrop"] = backdrop,
+    ["border_color"] = {0.4, 0.4, 0.4, 1},
+    ["enable_tooltip"] = false,
+    ["texture_border"] = nil,
+    ["texture_background"] = nil,
+    ["texture_desaturate"] = true,
+    ["texture_inset"] = 6, --really chrange, backdrop seams to be off by 1px, the border is actually 7px
+    ["enable_text"] = true,
+    ["text_font"] = {"Interface\\AddOns\\sCore\\media\\big_noodle_titling.ttf", 19, "OUTLINE"},
+  }
+	
+	 local b3_config = {
+    ["anchor"] = {"LEFT", 160, 0},
+    ["size"] = 64, --only supporting squared buttons, use even number to make it look nice
+    ["backdrop"] = backdrop,
+    ["border_color"] = {0.4, 0.4, 0.4, 1},
+    ["enable_tooltip"] = false,
+    ["texture_border"] = nil,
+    ["texture_background"] = nil,
+    ["texture_desaturate"] = true,
+    ["texture_inset"] = 6, --really chrange, backdrop seams to be off by 1px, the border is actually 7px
+    ["enable_text"] = true,
+    ["text_font"] = {"Interface\\AddOns\\sCore\\media\\big_noodle_titling.ttf", 19, "OUTLINE"},
+  }
+	
+	local d2 = cooldown:new("player", "Trinket0Slot")
+	--local d3 = cooldown:new("player", "t6")
+  
+  local f2 = button:new(b2_config, d2)
+  --local f3 = button:new(b3_config, d3)
+  
+  
+  --[[
+
+  local frame = CreateFrame("Frame", "talent_text", UIParent)
+  local tier = 6
+  
+  function frame.event(self, event, arg) 
+    print(event, arg)
+    for i=1, 3 do
+      local talentID, name, texture, selected, available = GetTalentInfo(tier, i, GetActiveSpecGroup())
+      if selected then
+        local s_name, rank, icon, castTime, minRange, maxRange, spellId = GetSpellInfo(name)
+        local c = cooldown:new("player", spellId)
+        if self.cur_cd then
+          self.cur_cd:_untrack()
+        end
+        self.cur_cd = c
+        print(c._start)
+        print("using talent: ", name)
+        return
+      end
+    end
+    print("no talent picked")
+  end
+  
+  frame.cur_cd = nil
+  frame:RegisterEvent("PREVIEW_TALENT_POINTS_CHANGED")
+  frame:RegisterEvent("PLAYER_TALENT_UPDATE")
+  frame:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
+  --frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+  
+  frame:SetScript("OnEvent", frame.event)
+  --]]
 	
 	--[[
 
