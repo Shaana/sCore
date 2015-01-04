@@ -65,21 +65,24 @@ cooldown.__init = {
   --player or pet spell cooldown
   [0] = function(self)
       _,_, self._texture = GetSpellInfo(self._id)
-      --self.update = self.update
+      --self.update = cooldown._update_spell     
     end,
+    
   --player slot cooldown
   [1] = function(self)
       self._property.slot_id = GetInventorySlotInfo(self._id)
       self._texture = GetInventoryItemTexture(self._unit, self._id)
-      --self.update = self.update
+      --self.update = cooldown._update_slot
     end,
+    
   --player talent cooldown
   [2] = function(self)
-      self.update = self._update_talent
+      self.update = cooldown._update_talent
     end,
+    
   --enemy spell cooldown
   [3] = function(self)
-      self.update = self._update_enemy_spell
+      self.update = cooldown._update_enemy_spell
     end,
     
 }
@@ -102,8 +105,8 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
 
   local object = CreateFrame("Frame", nil, UIParent)
   
-  core.inherit(object, self)
-  
+  core.inherit(object, cooldown) 
+    
   object._unit = unit
   object._active = false
   object._id = id
@@ -126,24 +129,10 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
     local s, e, m = string.find(object._id, "^t([0-9])$")
     if s then
       object._case = 2
-      --TODO
-      -- scan tier for spells with base_cooldown, register a new cooldown:new(id)
-      -- track/untrack spells that are currently picked by the player/unit
+
       object._property.tier = m
       object._property.cds = {}
-      
-      --cooldown = GetSpellBaseCooldown(id) --returns 0, if no cd and nil if error
-      
-      
-      --local talent_id, spell_name, spell_texture = GetTalentInfo(object._tier, 1, 2) --GetTalentInfo(tier, column, talentGroup[, isInspect, inspectedUnit])
-      --local _, talentName = GetTalentInfoByID(talent_id, 2); --DONT NEED THAT
-      
-      --This will return the right spell depending on spec
-      --but only if the talent is picked and in the spell book ... (unless spell_id is used)
-      --name, rank, icon, castTime, minRange, maxRange, spellId = GetSpellInfo(spell_name)
-      
-      --self:RegisterEvent("PREVIEW_TALENT_POINTS_CHANGED");
-      --self:RegisterEvent("PLAYER_TALENT_UPDATE");
+
     else
       --Note: we save the numeric slot identifier not the slot_name passed to cooldown.new function
       object._case = 1
@@ -152,7 +141,7 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
 
   cooldown.__init[object._case](object)
 
-  object:SetScript("OnEvent", self.update) 
+  object:SetScript("OnEvent", object.update) 
   object:_track()
   
   cooldown.__cooldowns[guid][id] = object
@@ -179,6 +168,8 @@ cooldown.__event = {
   }
 }
  
+--Note: This function should not be invoked directly.
+--      registering a new frame with cooldown will trigger this when required
 function cooldown._track(self)
   if not self._active then
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -187,16 +178,6 @@ function cooldown._track(self)
       print(i,v)
       self:RegisterEvent(v)
     end
-    
---    if self._type == 0 then --case[0]
---      --self:RegisterEvent("SPELL_UPDATE_USABLE")
---      self:RegisterEvent("SPELL_UPDATE_COOLDOWN")
---    elseif self._type == 1 then
---      --Note: an item might be switched, update texture
---      self:RegisterEvent("UNIT_INVENTORY_CHANGED")
---      --Note: BAG_UPDATE_COOLDOWN fires every 3-5 seconds for no apparent reason 
---      self:RegisterEvent("BAG_UPDATE_COOLDOWN")
---    end
   end
 end
 
@@ -206,6 +187,7 @@ function cooldown._untrack(self)
   self._active = false
 end
 
+
 --Note: if it's a talent cooldown this function is internally overwritten
 function cooldown.info(self)
   return self._start, self._duration, self._texture
@@ -214,7 +196,7 @@ end
 
 function cooldown.update(self, event, arg)
   --TODO remove
-  print(event)
+  --print(event)
   --TODO update texture as well when entering world, not the case here
   if event == "UNIT_INVENTORY_CHANGED" and arg == self._unit then
     self._texture = GetInventoryItemTexture(self._unit, self._property.slot_id)
@@ -234,16 +216,30 @@ function cooldown.update(self, event, arg)
   
   --TODO test gcd stop and add option 
   if not (self._duration == duration and self._start == start) then
+    --print("dif")
+    --print(self._duration, duration)
+    --BUG trying to remove the global cooldown causes new problems ...
+    --problem is when actual cooldown runs out, but still in gcd
     --(duration > 1.5 or duration == 0)
     if (duration > 1.5 or duration == 0) then
       --TODO make it nicer code ...
       --Note: force update after cooldown expired
+      print(duration)
       if duration > 0 then
         print("adding callback")
         --Note: (GetTime() - start) is NOT zero as one might expect
         C_Timer.After(duration - (GetTime() - start), function() 
-        print("callback")
-        self:update()
+          print("callback")
+
+          --TODO this seams to work for now ... to compensate for the gcd problem
+          self._duration, self._start = 0, 0
+          
+          for frame,_ in pairs(self._frames) do
+            frame:update()
+          end
+          
+          self:update()
+          
         end)
       end
       
@@ -264,17 +260,6 @@ function cooldown.update(self, event, arg)
   
   
   --[[
-  elseif event == "BAG_UPDATE_COOLDOWN" then 
-    local start, duration = GetInventoryItemCooldown(self._unit, self._slot_id)
-    if not (self._start == start and self._duration == duration) then
-      self._start, self._duration = start, duration
-      for i=1, #self._button do
-        self._button[i]:update()
-      end
-    else
-      print("droping update bag")
-    end
-    
   elseif event == "SPELL_UPDATE_USABLE" then
     local start, duration = GetSpellCooldown(self._id)
     if not (self._start == start and self._duration == duration) then
@@ -291,6 +276,36 @@ end
 
 
 function cooldown._update_spell(self, event, arg)
+  local start, duration = GetSpellCooldown(self._id)
+  
+  if not (self._duration == duration and self._start == start) then
+    print("spell_update")
+    --if (duration > 1.5 or duration == 0) then
+      --TODO make it nicer code ...
+      --Note: force update after cooldown expired
+      if duration > 0 then
+       --print("adding callback")
+        --Note: (GetTime() - start) is NOT zero as one might expect
+        C_Timer.After(duration - (GetTime() - start), function()
+          self:update()
+        end)
+      end
+      
+      self._start, self._duration = start, duration
+      
+      --TODO remove
+      --for i=1, #self._button do
+      for frame,_ in pairs(self._frames) do
+        --self._button[]:update()
+        frame:update()
+      end
+    --else
+      --print(duration)
+   -- end
+  else
+    --print("droping update")
+  end
+  
 
 end
 
@@ -301,7 +316,37 @@ end
 
 
 function cooldown._update_talent(self, event, arg)
-  
+      --TODO
+      -- scan tier for spells with base_cooldown, register a new cooldown:new(id)
+      -- track/untrack spells that are currently picked by the player/unit    
+      --cooldown = GetSpellBaseCooldown(id) --returns 0, if no cd and nil if error
+      
+      
+      --local talent_id, spell_name, spell_texture = GetTalentInfo(object._tier, 1, 2) --GetTalentInfo(tier, column, talentGroup[, isInspect, inspectedUnit])
+      --local _, talentName = GetTalentInfoByID(talent_id, 2); --DONT NEED THAT
+      
+      --This will return the right spell depending on spec
+      --but only if the talent is picked and in the spell book ... (unless spell_id is used)
+      --name, rank, icon, castTime, minRange, maxRange, spellId = GetSpellInfo(spell_name)
+      
+      --self:RegisterEvent("PREVIEW_TALENT_POINTS_CHANGED");
+      --self:RegisterEvent("PLAYER_TALENT_UPDATE");
+      for i=1, 3 do
+        local talentID, name, texture, selected, available = GetTalentInfo(self._property.tier, i, GetActiveSpecGroup())
+        if selected then
+          local s_name, rank, icon, castTime, minRange, maxRange, spellId = GetSpellInfo(name)
+          local c = cooldown:new("player", spellId)
+          if self.cur_cd then
+            print("untracking cur_cd")
+            self.cur_cd:_untrack()
+          end
+          self.cur_cd = c
+          print(c._start)
+          print("using talent: ", name)
+          return
+        end
+      end
+      
 end
 
 
@@ -469,6 +514,7 @@ local default_header_config = {
   ["anchor"] = {"CENTER",-420,-185},
   ["horizontal_spacing"] = 5,
   ["vertical_spacing"] = 5,
+  ["x_wrap"] = 7,
   ["grow_direction"] = "LEFTUP",
   ["spell_ids"] = {
     "Trinket0Slot",
@@ -494,14 +540,14 @@ function header.new(self, config, button_config)
   object:SetSize(40,40)
   object:SetPoint(unpack(object.config["anchor"]))
   
-  object.button_config["size"] = 36
+  --object.button_config["size"] = 36
   
   local x, y
-  local h_dist = 0
+  local h_dist = 0--object.button_config["horizontal_spacing"]
   local x_size = object.button_config["size"]
   --local cur_anch = {}
   for i=1, #object.config["spell_ids"] do
-    x = (h_dist + x_size)*(i % 12)
+    x = (h_dist + x_size)*(i % object.config["x_wrap"])
     y = 0 
     cur_anch = {"TOPLEFT", object, "TOPLEFT", x, y}
     object.button_config["anchor"] = cur_anch
@@ -520,54 +566,6 @@ end
 
 
 
---[[
-  ["PRIEST"] = {
-17, -- Power Word: Shield
-527,  -- Purify
-586,  -- Fade
-724,  -- Lightwell
-6346, -- Fear Ward
-8092, -- Mind Blast
-8122, -- Psychic Scream
-10060,  -- Power Infusion
-14914,  -- Holy Fire
-15286,  -- Vampiric Embrace
-15487,  -- Silence
-19236,  -- Desperate Prayer
-32375,  -- Mass Dispel
-32379,  -- Shdow Word: Death
-33076,  -- Prayer of Mending
-33206,  -- Pain Suppression
-34433,  -- Shadowfiend
-34861,  -- Circle of Healing
-47540,  -- Penance
-47585,  -- Dispersion
-47788,  -- Guardian Spirit
-62618,  -- Power Word: Barrier
-64901,  -- Hymm of Hope
-64044,  -- Psychic Horror
-64843,  -- Divine Hymm
-73325,  -- Leap of Faith
-81206,  -- Chakra: Sanctuary
-81209,  -- Chakra: Chastise
-81208,  -- Chakra: Serenity
-81700,  -- Archangel
-88625,  -- Holy Word: Chastise
-88684,  -- Holy Word: Serenity
-88685,  -- Holy Word: Sanctuary
-89485,  -- Inner Focus
-108920, -- Void Tendrils
-108921, -- Psyfiend
-108968, -- Void Shift
-109964, -- Spirit Shell
-110744, -- Divine Star
-120517, -- Halo
-121135, -- Cascade
-121536, -- Angelic Feather
-123040, -- Mindbender
-129250, -- Power Word: Solace
-},
---]]
 
 
 

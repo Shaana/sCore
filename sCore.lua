@@ -55,9 +55,9 @@ local b = button:new("config",c)
   local button = namespace.class.cooldown_button
   local header = namespace.class.cooldown_header
   
-  local d = cooldown:new("player", 8122) --"BackSlot"
+  --local d = cooldown:new("player", 8122) --"BackSlot"
   --local d = cooldown:new("player", "t7") --"BackSlot"
-  local f = button:new(nil, d)
+ -- local f = button:new(nil, d)
 	
 	--local h = header:new()
 	
@@ -94,10 +94,10 @@ local b = button:new("config",c)
     ["text_font"] = {"Interface\\AddOns\\sCore\\media\\big_noodle_titling.ttf", 19, "OUTLINE"},
   }
 	
-	local d2 = cooldown:new("player", "Trinket0Slot")
+	--local d2 = cooldown:new("player", "Trinket0Slot")
 	--local d3 = cooldown:new("player", "t6")
   
-  local f2 = button:new(b2_config, d2)
+  --local f2 = button:new(b2_config, d2)
   --local f3 = button:new(b3_config, d3)
   
   

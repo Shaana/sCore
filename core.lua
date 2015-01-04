@@ -109,9 +109,9 @@ core.si_value = si_value
 
 local function format_time(time, show_msec, show_sec, show_min, show_hour)
   if time < (show_msec or 2) then
-    return ("%.1f s"):format(time)
+    return ("%.1f"):format(time)
   elseif time < (show_sec or 60) then
-    return ("%.0f s"):format(time)
+    return ("%.0f"):format(time)
   elseif time < (show_min or 3600) then --60*60
     return ("%.0f m"):format(time/60)
   elseif time < (show_hour or 86400) then --60*60*24

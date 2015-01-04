@@ -1,5 +1,5 @@
 --[[
-Copyright (c) 2008-2014 Shaana <shaana@student.ethz.ch>
+Copyright (c) 2008-2015 Shaana <shaana@student.ethz.ch>
 This file is part of sCore.
 
 sCore is free software: you can redistribute it and/or modify
@@ -13,7 +13,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with sCore.  If not, see <http://www.gnu.org/licenses/>.
+along with sCore. If not, see <http://www.gnu.org/licenses/>.
 --]]
 
 local setmetatable, pairs = setmetatable, pairs
