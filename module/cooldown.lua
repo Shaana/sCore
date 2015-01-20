@@ -44,10 +44,13 @@ along with sCore.  If not, see <http://www.gnu.org/licenses/>.
   
 --]]
 
+--TODO interrupts not tracked properly --> fix
+
 local addon, namespace = ...
 local core = namespace.core
 
 --TODO upvalue
+local floor = math.floor
 
 --TODO implement core.pp property that the whole thing also works then it's disabled
 
@@ -105,7 +108,7 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
 
   local object = CreateFrame("Frame", nil, UIParent)
   
-  core.inherit(object, cooldown) 
+  core.inherit(object, cooldown, true) 
     
   object._unit = unit
   object._active = false
@@ -175,7 +178,7 @@ function cooldown._track(self)
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
     
     for i,v in ipairs(cooldown.__event[self._case]) do
-      print(i,v)
+      --print(i,v)
       self:RegisterEvent(v)
     end
   end
@@ -224,12 +227,12 @@ function cooldown.update(self, event, arg)
     if (duration > 1.5 or duration == 0) then
       --TODO make it nicer code ...
       --Note: force update after cooldown expired
-      print(duration)
+      --print(duration)
       if duration > 0 then
-        print("adding callback")
+        --print("adding callback")
         --Note: (GetTime() - start) is NOT zero as one might expect
         C_Timer.After(duration - (GetTime() - start), function() 
-          print("callback")
+          --print("callback")
 
           --TODO this seams to work for now ... to compensate for the gcd problem
           self._duration, self._start = 0, 0
@@ -366,6 +369,84 @@ function cooldown.unregister(self, frame)
   end
   return false
 end
+
+--Note: behaves exactly like a cooldown. 
+--      multiple cooldowns can be registered to the cooldown cluster. However only one cooldown is displayed, determined by the sort_func  
+local cluster = {
+  __instance = "cooldown_cluster",
+  __cooldowns = {},
+}
+namespace.class.cooldown_cluster = cluster
+
+--DEBUG not quiet sure if that works with the self thing
+local function default_sort(self, cooldown_list)
+  for i=1, #cooldown_list do
+    local start, duration = cooldown_list[i]:info()
+    if not duration == 0 then 
+      return cooldown_list[i]
+    end
+  end
+  return cooldown_list[1]
+end
+
+
+function cluster.new(self, id_list, sort_func)
+  local object = CreateFrame("Frame",nil, UIParent)
+  
+  core.inherit(object, self, true)
+  
+  object.sort = sort_func or default_sort
+  
+  object._cooldown_list = {}
+  object._current_cooldown = nil
+  object._frames = {}
+  
+  --create cooldowns
+  local cooldown
+  for i=1, #id_list do
+    cooldown = cooldown:new(id_list[i])
+    table.insert(object._cooldown_list, cooldown)
+    cooldown:register(object)
+  end
+  
+  object._current_cooldown = object._cooldown_list[1] --index correct ?
+  
+  return object
+end
+
+
+function cluster.update(self)
+  object._current_cooldown = object:sort()
+  for frame,_ in pairs(self._frames) do
+    frame:update()
+  end
+end
+
+
+function cluster.register(self, frame)
+  if not self._frames[frame] then
+    self._frames[frame] = true
+    return true
+  end
+  return false
+end
+
+
+function cluster.unregister(self, frame)
+  if self._frames[frame] then
+    self._frames[frame] = nil
+    return true
+  end
+  return false
+end
+
+
+function cluster.info(self)
+  return self._current_cooldown:info()
+end
+
+
+
 
 
 local button = {__instance = "cooldown_button"}
@@ -542,13 +623,13 @@ function header.new(self, config, button_config)
   
   --object.button_config["size"] = 36
   
-  local x, y
+  local x, y = 0, 0
   local h_dist = 0--object.button_config["horizontal_spacing"]
   local x_size = object.button_config["size"]
   --local cur_anch = {}
   for i=1, #object.config["spell_ids"] do
     x = (h_dist + x_size)*(i % object.config["x_wrap"])
-    y = 0 
+    y = (h_dist + x_size)*floor((i - 1) / object.config["x_wrap"])
     cur_anch = {"TOPLEFT", object, "TOPLEFT", x, y}
     object.button_config["anchor"] = cur_anch
     local c = cooldown:new("player", object.config["spell_ids"][i])
