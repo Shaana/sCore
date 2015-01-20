@@ -66,25 +66,25 @@ namespace.class.cooldown = cooldown
 
 cooldown.__init = {
   --player or pet spell cooldown
-  [0] = function(self)
+  [1] = function(self)
       _,_, self._texture = GetSpellInfo(self._id)
       --self.update = cooldown._update_spell     
     end,
     
   --player slot cooldown
-  [1] = function(self)
+  [2] = function(self)
       self._property.slot_id = GetInventorySlotInfo(self._id)
       self._texture = GetInventoryItemTexture(self._unit, self._id)
       --self.update = cooldown._update_slot
     end,
     
   --player talent cooldown
-  [2] = function(self)
+  [3] = function(self)
       self.update = cooldown._update_talent
     end,
     
   --enemy spell cooldown
-  [3] = function(self)
+  [4] = function(self)
       self.update = cooldown._update_enemy_spell
     end,
     
@@ -122,23 +122,23 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
   --Note: 
   if type(object._id) == "number" then
     if object._unit == "player" or object._unit == "pet" then
-      object._case = 0
+      object._case = 1
     else
-      object._case = 3
+      object._case = 4
     end
     
   --item cooldown (slot name is given)
   elseif type(id) == "string" then
     local s, e, m = string.find(object._id, "^t([0-9])$")
     if s then
-      object._case = 2
+      object._case = 3
 
       object._property.tier = m
       object._property.cds = {}
 
     else
       --Note: we save the numeric slot identifier not the slot_name passed to cooldown.new function
-      object._case = 1
+      object._case = 2
     end
   end
 
@@ -157,14 +157,14 @@ end
 --test with cooldown reset spells !
  
 cooldown.__event = {
-  [0] = {
+  [1] = {
     "SPELL_UPDATE_COOLDOWN",
     },
-  [1] = {
+  [2] = {
     "UNIT_INVENTORY_CHANGED",
     "BAG_UPDATE_COOLDOWN",
     },
-  [2] = {
+  [3] = {
     "PREVIEW_TALENT_POINTS_CHANGED",
     "PLAYER_TALENT_UPDATE",
     "ACTIVE_TALENT_GROUP_CHANGED",
@@ -210,9 +210,9 @@ function cooldown.update(self, event, arg)
   
   local start, duration
   
-  if self._case == 0 then
+  if self._case == 1 then
     start, duration = GetSpellCooldown(self._id)
-  elseif self._case == 1 then
+  elseif self._case == 2 then
     start, duration = GetInventoryItemCooldown(self._unit, self._property.slot_id)
   end
   
@@ -379,7 +379,7 @@ local cluster = {
 namespace.class.cooldown_cluster = cluster
 
 --DEBUG not quiet sure if that works with the self thing
-local function default_sort(self, cooldown_list)
+local function default_sort(cooldown_list)
   for i=1, #cooldown_list do
     local start, duration = cooldown_list[i]:info()
     if not duration == 0 then 
@@ -392,7 +392,7 @@ end
 
 function cluster.new(self, id_list, sort_func)
   local object = CreateFrame("Frame",nil, UIParent)
-  
+
   core.inherit(object, self, true)
   
   object.sort = sort_func or default_sort
@@ -409,14 +409,14 @@ function cluster.new(self, id_list, sort_func)
     cooldown:register(object)
   end
   
-  object._current_cooldown = object._cooldown_list[1] --index correct ?
+  object._current_cooldown = object._cooldown_list[1]
   
   return object
 end
 
 
 function cluster.update(self)
-  object._current_cooldown = object:sort()
+  self._current_cooldown = self.sort(cooldown_list)
   for frame,_ in pairs(self._frames) do
     frame:update()
   end
@@ -444,8 +444,6 @@ end
 function cluster.info(self)
   return self._current_cooldown:info()
 end
-
-
 
 
 
@@ -531,6 +529,8 @@ end
 function button.update(self)
   assert(self._cooldown, "no cd set to button")
   
+  --TODO implement this
+  local start, duration, texture = self._cooldown:info()
   --update texture in any case
   --TODO remove, only upate if needed, or maybe always, function not called often anyway
   self.texture:SetTexture(self._cooldown._texture)
