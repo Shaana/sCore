@@ -42,8 +42,8 @@ local addon, namespace = ...
     - Replaces a frames method with a scaled version of the same function. Individual methods or all
       currently available methods can be replaced.
     
-    pp.add(frame, method_name)
-    pp.add_all(frame)
+    pp.register_method(frame, method_name)
+    pp.register(frame)
     
     - Currently the following methods are scaled to achieve pixel perfection
     
@@ -60,7 +60,7 @@ local addon, namespace = ...
     local frame = CreateFrame("Frame", nil, UIParent)
     
     --enable pixel perfection for the frame (before using SetPoint, SetSize, ....)
-    sCore.pp.add_all(frame)
+    sCore.pp.register(frame)
     
     frame:SetPoint("CENTER", 0, 0)
     frame:SetSize(64, 64)
@@ -69,7 +69,7 @@ local addon, namespace = ...
     frame.texture = frame:CreateTexture(nil, "BACKGROUND")
     
     --enable pixel perfection for the texture, too
-    sCore.pp.add_all(frame.texture)
+    sCore.pp.register(frame.texture)
     
     frame.texture:SetAllPoints(frame)
     frame.texture:SetTexture(0.5, 0.5, 0.5)
@@ -77,8 +77,6 @@ local addon, namespace = ...
 
     
 --]]
-
-
 
 --upvalue
 local string_match = string.match
@@ -95,66 +93,57 @@ namespace.core.pp = pp
 
 --note:	its not a class, you can't make multiple objects.
 
+--DISPLAY_SIZE_CHANGED
 
 --TODO if pp._object then ... move it to first line ?
-function pp.init(ui_scale)
+function pp.init()
 	if not pp._object then
-		--local selected_resolution = ({GetScreenResolutions()})[GetCurrentResolution()]
-		--local resolution_width, resolution_height = string.match(selected_resolution, "(%d+)x(%d+)")
-		local resolution_width, resolution_height = string_match(({GetScreenResolutions()})[GetCurrentResolution()], "(%d+)x(%d+)")
+		local selected_resolution = ({GetScreenResolutions()})[GetCurrentResolution()]
+		local resolution_width, resolution_height = string_match(selected_resolution, "(%d+)x(%d+)")
 		
-	
 		pp._object = CreateFrame("Frame", nil, UIParent)
-		pp._mapping = {} --mapping table to track replaced functions of frames.
-		--[[
-		map_table = { 	
-		    ["frame1"] = { 	
-		        ["SetPoint"] = function C488F9F1,
-						["Setsize"] = function fC64Fd21,
-				},		
-				["frame2"] = {...},
-		}
-		--]]
+		pp._config = namespace.config["pp"]
+		--mapping table to track replaced functions of frames
+    --[[
+    map_table = {   
+        ["frame1"] = {  
+            ["SetPoint"] = function C488F9F1,
+            ["Setsize"] = function fC64Fd21,
+        },    
+        ["frame2"] = {...},
+    }
+    --]]
+		pp._mapping = {}
 		
-		--Note: seams like if you turn off uiscale, wow already has pixelperfection implemented
-		if ui_scale then
-			assert(ui_scale < 1.2) --TODO possibly this should be <= 1 ?
-			assert(ui_scale >= 0.64)
-			
-			pp._ui_scale = ui_scale
-			pp._use_ui_scale = 1 --turned on
-			pp._scale_factor = 768/(resolution_height*ui_scale)
-		else
-			pp._use_ui_scale = 0 --turned off
-			pp._scale_factor = 1
-		end	
+		pp._ui_scale = pp._config["ui_scale"]
+		pp._scale_factor = 768/(resolution_height*pp._config["ui_scale"])
 
 		pp._object:RegisterEvent("VARIABLES_LOADED")
-		--pp._object:RegisterEvent("UI_SCALE_CHANGED")
 		pp._object:SetScript("OnEvent", pp._load)
 	end
 end
 
 
-function pp.loaded()
-	if pp._object then
-		return true
-	end
-	return false
-end
-
-
 function pp._load()
-	assert(pp._object, "pp not initialized") 
+	SetCVar("uiScale", pp._ui_scale)
+	SetCVar("useUiScale", pp._config["enable"] and 1 or 0)
 	
-	if pp._use_ui_scale == 1 then
-  	SetCVar("uiScale", pp._ui_scale)
+  -- initial loading is only required once
+  pp._object:UnregisterEvent("VARIABLES_LOADED")
+  
+  -- enable warnings
+  if pp._config["enable"] then
+    pp._object:SetScript("OnEvent", function()
+      print("[!] Warning: UI scale or display resolution changed. sCore.pp module won't function properly. Reload the interface to resolve.")
+    end)
+  
+    pp._object:RegisterEvent("UI_SCALE_CHANGED")
+    pp._object:RegisterEvent("DISPLAY_SIZE_CHANGED")
   end
-  SetCVar("useUiScale", pp._use_ui_scale)
-  pp._object:UnregisterEvent("VARIABLES_LOADED") --only need to do this once
 end
 
-function pp.add(frame, method_name)
+
+function pp.register_method(frame, method_name)
 	assert(pp._object, "pp not initialized")
 	assert(method_name, "missing arg")
 	assert(frame[method_name], "doesn't have this method: "..method_name)
@@ -176,13 +165,16 @@ function pp.add(frame, method_name)
 	end
 end
 
-function pp.add_all(frame)
-	for k,_ in pairs(pp.method) do
-		--check if the frame has a method called k
-		if frame[k] then
-			pp.add(frame, k)
-		end
-	end
+
+function pp.register(frame)
+  if pp._config["enable"] then
+    for k,_ in pairs(pp.method) do
+      --check if the frame has a method called k
+      if frame[k] then
+        pp.register_method(frame, k)
+      end
+    end
+  end
 end
 
 
@@ -263,7 +255,7 @@ function pp.method.SetBackdrop(frame, backdrop_table)
 end
 
 
-
+pp.init()
 
 
 
