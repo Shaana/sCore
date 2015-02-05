@@ -45,6 +45,8 @@ along with sCore.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
 --TODO interrupts not tracked properly --> fix
+-- LEARNED_SPELL_IN_TAB might fire when talent is changed ?
+
 
 local addon, namespace = ...
 local core = namespace.core
@@ -68,7 +70,7 @@ cooldown.__init = {
   --player or pet spell cooldown
   [1] = function(self)
       _,_, self._texture = GetSpellInfo(self._id)
-      --self.update = cooldown._update_spell     
+      self.update = cooldown._update_spell     
     end,
     
   --player slot cooldown
@@ -93,7 +95,7 @@ cooldown.__init = {
 --Note: id can be both a spell_id (integer) or a slot_id (string) and even enemy cooldowns
 function cooldown.new(self, unit, id, duration, reset_spell_id)
   --TODO guid is only available after the player enter world or something ...
-  local guid = "player" --UnitGUID(unit)
+  local guid = unit --"player" --UnitGUID(unit)
   
   --TODO this might cause problems, cooldowns could unintentionally get untracked
   --solution: make track/untrack private functions. Only track cooldown if one or more frames are registered
@@ -106,7 +108,7 @@ function cooldown.new(self, unit, id, duration, reset_spell_id)
     cooldown.__cooldowns[guid] = {}
   end
 
-  local object = CreateFrame("Frame", nil, UIParent)
+  local object = CreateFrame("Frame", "cooldown", UIParent)
   
   core.inherit(object, cooldown, true) 
     
@@ -158,7 +160,11 @@ end
  
 cooldown.__event = {
   [1] = {
+    --TODO dont need all of these events
     "SPELL_UPDATE_COOLDOWN",
+    "UNIT_SPELLCAST_FAILED",
+    "UNIT_SPELLCAST_SUCCEEDED",
+    "UNIT_SPELLCAST_INTERRUPTED"
     },
   [2] = {
     "UNIT_INVENTORY_CHANGED",
@@ -178,8 +184,11 @@ function cooldown._track(self)
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
     
     for i,v in ipairs(cooldown.__event[self._case]) do
-      --print(i,v)
-      self:RegisterEvent(v)
+      if string.sub(v,1,5) == "UNIT_" then
+        self:RegisterUnitEvent(v, self._unit)
+      else
+        self:RegisterEvent(v)
+      end
     end
   end
 end
@@ -198,8 +207,11 @@ end
 
 
 function cooldown.update(self, event, arg)
+  --This is simply a dummy function, which is overwritten in cooldown.new() during initialization
+  --[[
   --TODO remove
   --print(event)
+
   --TODO update texture as well when entering world, not the case here
   if event == "UNIT_INVENTORY_CHANGED" and arg == self._unit then
     self._texture = GetInventoryItemTexture(self._unit, self._property.slot_id)
@@ -261,7 +273,7 @@ function cooldown.update(self, event, arg)
     --print("droping update")
   end
   
-  
+  --]]
   --[[
   elseif event == "SPELL_UPDATE_USABLE" then
     local start, duration = GetSpellCooldown(self._id)
@@ -280,31 +292,51 @@ end
 
 function cooldown._update_spell(self, event, arg)
   local start, duration = GetSpellCooldown(self._id)
+  if event == "UNIT_SPELLCAST_INTERRUPTED" then
+    print("interrupt")
+    print(arg)
+  end
+  
   
   if not (self._duration == duration and self._start == start) then
-    print("spell_update")
-    --if (duration > 1.5 or duration == 0) then
+    --print("dif")
+    --print(self._duration, duration)
+    --BUG trying to remove the global cooldown causes new problems ...
+    --problem is when actual cooldown runs out, but still in gcd
+    --(duration > 1.5 or duration == 0)
+    if (duration > 1.5 or duration == 0) then
       --TODO make it nicer code ...
       --Note: force update after cooldown expired
+      --print(duration)
       if duration > 0 then
-       --print("adding callback")
+        print("adding callback", self._id ,duration - (GetTime() - start))
         --Note: (GetTime() - start) is NOT zero as one might expect
-        C_Timer.After(duration - (GetTime() - start), function()
+        C_Timer.After(duration - (GetTime() - start), function() 
+          print("callback", self._id)
+
+          --TODO this seams to work for now ... to compensate for the gcd problem
+          self._duration, self._start = 0, 0
+          
+          for frame,_ in pairs(self._frames) do
+            frame:update()
+          end
+          
           self:update()
+          
         end)
       end
       
-      self._start, self._duration = start, duration
       
+      self._start, self._duration = start, duration
       --TODO remove
       --for i=1, #self._button do
       for frame,_ in pairs(self._frames) do
         --self._button[]:update()
         frame:update()
       end
-    --else
+    else
       --print(duration)
-   -- end
+    end
   else
     --print("droping update")
   end
@@ -395,7 +427,7 @@ function cluster.new(self, id_list, sort_func)
 
   core.inherit(object, self, true)
   
-  object.sort = sort_func or default_sort
+  object._sort = sort_func or default_sort
   
   object._cooldown_list = {}
   object._current_cooldown = nil
@@ -416,7 +448,7 @@ end
 
 
 function cluster.update(self)
-  self._current_cooldown = self.sort(cooldown_list)
+  self._current_cooldown = self._sort(cooldown_list)
   for frame,_ in pairs(self._frames) do
     frame:update()
   end
@@ -472,9 +504,9 @@ local default_button_config = {
 
 --TODO consistancy with _ and dropping it
 function button.new(self, config, cooldown)
-  local object = CreateFrame("Frame",nil, UIParent)
+  local object = CreateFrame("Frame","CDbutton", UIParent)
   
-  core.pp.add_all(object)
+  core.pp.register(object)
   
   core.inherit(object, self, true)
     
@@ -494,7 +526,7 @@ function button.new(self, config, cooldown)
   local j = 5/64 --0.0625 --4/64
   
   object.texture = object:CreateTexture(nil, "BACKGROUND")
-  core.pp.add_all(object.texture)
+  core.pp.register(object.texture)
   
   object.texture:SetPoint("TOPLEFT", i, -i)
   object.texture:SetPoint("BOTTOMRIGHT", -i, i)
@@ -502,12 +534,20 @@ function button.new(self, config, cooldown)
     
   --Note: apparently the frame needs to inherit  from CooldownFrameTemplate in order to work 
   object.animation = CreateFrame("Cooldown", nil, object,  "CooldownFrameTemplate")
-  core.pp.add_all(object.animation)
+  core.pp.register(object.animation)
   
   object.animation:SetFrameLevel(1)
   object.animation:SetPoint("TOPLEFT", i, -i)
   object.animation:SetPoint("BOTTOMRIGHT", -i, i)
   object.animation:SetDrawEdge(false)
+  
+  object.gloss = object:CreateTexture(nil, "OVERLAY")
+  core.pp.register(object.gloss)
+  
+  object.gloss:SetPoint("TOPLEFT", i, -i)
+  object.gloss:SetPoint("BOTTOMRIGHT", -i, i)
+  object.gloss:SetTexture("Interface\\AddOns\\sCore\\media\\gloss.tga")
+  object.gloss:SetVertexColor(0.1, 0.1, 0.1, 1)
   
   object.text = object:CreateFontString(nil, "OVERLAY")
   object.text:SetPoint("CENTER", 0,0)
@@ -540,7 +580,8 @@ function button.update(self)
     self.texture:SetDesaturated(self.config["texture_desaturate"]) --grey style
     self:SetAlpha(0.8)
     self.animation:SetCooldown(self._cooldown._start, self._cooldown._duration)
-    self:SetScript("OnUpdate", self._update_text)
+    --DEBUG disabled text for now
+    --self:SetScript("OnUpdate", self._update_text)
   
   --ready  
   else
@@ -550,7 +591,7 @@ function button.update(self)
     --StopAnimating() not working ?
     --self.animation:StopAnimating()
     self.animation:SetCooldown(0,0) 
-    self:SetScript("OnUpdate", nil)
+    --self:SetScript("OnUpdate", nil)
     self.text:SetText("")
   end
 
@@ -609,10 +650,10 @@ local default_header_config = {
 }
 
 function header.new(self, config, button_config)
-  local object =  CreateFrame("Frame",nil, UIParent)
+  local object =  CreateFrame("Frame","CDHeader", UIParent)
   
-  core.pp.add_all(object)
-  core.inherit(object, self)
+  core.pp.register(object)
+  core.inherit(object, self, true)
   
   object.config = config  or default_header_config
   --TODO make a copy, so we can change anchor and wont affect things ...
@@ -633,16 +674,27 @@ function header.new(self, config, button_config)
     cur_anch = {"TOPLEFT", object, "TOPLEFT", x, y}
     object.button_config["anchor"] = cur_anch
     local c = cooldown:new("player", object.config["spell_ids"][i])
-    button:new(object.button_config, c)
+    local b = button:new(object.button_config, c)
+    b:SetParent(object)
   end
+  
+
+  object:SetScript("OnEvent", object.update)
+  
+  object:RegisterEvent("PET_BATTLE_CLOSE")
+  object:RegisterEvent("PET_BATTLE_OPENING_START")
   
   return object
 end
 
 
 --TODO, when config is reloaded ?
-function header.update(self)
-  
+function header.update(self, event, arg1)
+  if event == "PET_BATTLE_CLOSE" then
+    self:Show()
+  elseif event == "PET_BATTLE_OPENING_START" then
+    self:Hide()
+  end
 end
 
 

@@ -29,8 +29,7 @@ config["core"] = {
 }
 
 config["pp"] = {
-	["__index"] = config["core"],
-	["enable"] = true,
+	["enable"] = false,
 	["ui_scale"] = 0.64, --nil or 0.64 to 1; nil turns it off
 }
 
@@ -40,7 +39,7 @@ config["console"] = {
 }
 
 config["aura"] = {
-	
+	 ["__index"] = config["core"],
 }
 
 

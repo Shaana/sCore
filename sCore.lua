@@ -94,11 +94,11 @@ local b = button:new("config",c)
     ["text_font"] = {"Interface\\AddOns\\sCore\\media\\big_noodle_titling.ttf", 19, "OUTLINE"},
   }
 	
-	--local d2 = cooldown:new("player", "Trinket0Slot")
-	--local d3 = cooldown:new("player", "t6")
+	local d2 = cooldown:new("player", 8092)
+	local d3 = cooldown:new("player", 8122)
   
-  --local f2 = button:new(b2_config, d2)
-  --local f3 = button:new(b3_config, d3)
+  local f2 = button:new(b2_config, d2)
+  local f3 = button:new(b3_config, d3)
   
   
   --[[
@@ -134,43 +134,46 @@ local b = button:new("config",c)
   frame:SetScript("OnEvent", frame.event)
   --]]
 	
-	--[[
-
-	--frame one
-	local frame = CreateFrame("Frame", "sPixelPerfection", UIParent)
-	
-	print(frame.SetHeight)
-	pp.add_all(frame)
-	
-	frame:SetHeight(768)
-	frame:SetWidth(200)
-	
-	
-	frame:SetPoint("TOPLEFT",5, 0)
-	frame:Show()
-	
-	local t = frame:CreateTexture(nil,"BACKGROUND")
-	t:SetAllPoints(frame)
-	t:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background")
-	t:SetVertexColor(0, 0, 0, 0.9)
-	t:Show()
-	
-	
-	--frame2 to compare
-	local frame2 = CreateFrame("Frame", "sPixelPerfection2", UIParent)
-	frame2:SetHeight(768)
-	frame2:SetWidth(200)
-
-	frame2:SetPoint("TOPLEFT",250, 0)
-	frame2:Show()
-	
-	local t2 = frame2:CreateTexture(nil,"BACKGROUND")
-	t2:SetAllPoints(frame2)
-	t2:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background")
-	t2:SetVertexColor(0, 0, 0, 0.9)
-	t2:Show()
-	
-	--]]
 end
 
-init()
+--init()
+
+local function test_pp()
+  --frame one
+  local frame = CreateFrame("Frame", "sPixelPerfection", UIParent)
+  
+  print(frame.SetHeight)
+  pp.register(frame)
+  
+  frame:SetHeight(768)
+  frame:SetWidth(200)
+  
+  
+  frame:SetPoint("TOPLEFT",5, 0)
+  frame:Show()
+  
+  local t = frame:CreateTexture(nil,"BACKGROUND")
+  t:SetAllPoints(frame)
+  t:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background")
+  t:SetVertexColor(0, 0, 0, 0.9)
+  t:Show()
+  
+  
+  --frame2 to compare
+  local frame2 = CreateFrame("Frame", "sPixelPerfection2", UIParent)
+  frame2:SetHeight(768)
+  frame2:SetWidth(200)
+
+  frame2:SetPoint("TOPLEFT",250, 0)
+  frame2:Show()
+  
+  local t2 = frame2:CreateTexture(nil,"BACKGROUND")
+  t2:SetAllPoints(frame2)
+  t2:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background")
+  t2:SetVertexColor(0, 0, 0, 0.9)
+  t2:Show()
+end
+
+
+test_pp()
+
