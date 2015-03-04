@@ -107,7 +107,7 @@ function castbar.new(self, config)
 	
 	return object
 end
-print("loading castbar1")
+
 local cast_event = {
 	--[[
 	["UNIT_SPELLCAST_START"] = function(self, spell) -- spell is the spell name
@@ -124,7 +124,7 @@ local cast_event = {
 	end,
 	--]]
 }
-print("loading castbar2")
+
 function cast_event.UNIT_SPELLCAST_START(self, spell) --, cast_id, spell_id
 	local name, _, text, texture, start_time, end_time, _, cast_id, interruptible = UnitCastingInfo(self.config["unit"])
 	
@@ -153,7 +153,7 @@ function cast_event.UNIT_SPELLCAST_START(self, spell) --, cast_id, spell_id
 	
 	self:SetScript("OnUpdate", self._update_casting)
 end
-print("loading castbar3")
+
 function cast_event.UNIT_SPELLCAST_STOP(self, spell, rank, cast_id, spell_id)
 	if(self.property["cast_id"] ~= cast_id) then
 		return
@@ -173,7 +173,7 @@ function cast_event.UNIT_SPELLCAST_FAILED(self, spell, rank, cast_id, spell_id)
 	self.bar:SetValue(0)
 	self.bar:Hide()
 end
-print("loading castbar4")
+
 function cast_event.UNIT_SPELLCAST_DELAYED(self, spell, rank, cast_id, spell_id)
     local name, _, text, texture, start_time, end_time = UnitCastingInfo(self.config["unit"])
     if not start_time then
@@ -199,7 +199,7 @@ function cast_event.UNIT_SPELLCAST_DELAYED(self, spell, rank, cast_id, spell_id)
     print(self.property["delay"])
 end
 
-print("loading castbar4.5")
+
 --Note: this might also be called when the unit was channeling a spell and got interrupted
 function cast_event.UNIT_SPELLCAST_INTERRUPTED(self, spell, rank, cast_id, spell_id)
 	if(self.property["cast_id"] ~= cast_id) then
@@ -238,8 +238,6 @@ function cast_event.UNIT_SPELLCAST_CHANNEL_STOP(self, spell, rank, cast_id, spel
 
 end
 
-print("loading castbar5")
-
 
 
 function castbar.update(self, event, unit, ...)
@@ -271,7 +269,7 @@ function castbar._update_casting(self, elapsed)
 
 
 end
-print("loading castbar7")
+
 function castbar._update_channeling()
 
 end

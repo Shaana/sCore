@@ -142,7 +142,6 @@ local function test_pp()
   --frame one
   local frame = CreateFrame("Frame", "sPixelPerfection", UIParent)
   
-  print(frame.SetHeight)
   pp.register(frame)
   
   frame:SetHeight(768)
@@ -175,5 +174,5 @@ local function test_pp()
 end
 
 
-test_pp()
+--test_pp()
 

@@ -30,7 +30,29 @@ namespace.core = core
 local class = {}
 namespace.class = class
 
+local config = namespace.config
 
+--TODO add special coloring for quoted things |cFF9370DB%q|r
+local function error(msg)
+  if config["core"]["show_error"] then
+    print("[|cFFFF0000x|r] |cFFFF0000Error|r: "..msg)
+  end
+end
+core.error = error
+
+local function warning(msg)
+  if config["core"]["show_warning"] then
+    print("[|cFFFFA500!|r] |cFFFFA500Warning|r: "..msg)
+  end
+end
+core.warning = warning
+
+local function debug(msg)
+  if config["core"]["show_debug"] then
+    print("[|cFF32CD32+|r] |cFF32CD32Debug|r: "..msg)
+  end
+end
+core.debug = debug
 
 local function is_instance(object, class)
   if object.__instance == class.__instance then
@@ -48,17 +70,23 @@ local function inherit(object, class, secure)
     for k,v in pairs(class) do
       object[k] = v
     end
-  end
-  --use meta tables for the inheritance
-  local parent = {class, getmetatable(object).__index}
-  setmetatable(object, class)
-  class.__index = function(t,k)
-    for i=1, #parent do
-      local v = parent[i][k]
-      if v then
-        return v
+    
+  elseif getmetatable(object) then
+    --use meta tables for the inheritance
+    local parent = {class, getmetatable(object).__index}
+    setmetatable(object, class)
+    class.__index = function(t,k)
+      for i=1, #parent do
+        local v = parent[i][k]
+        if v then
+          return v
+        end
       end
     end
+    
+  else
+    setmetatable(object, class)
+    class.__index = class
   end
 end
 core.inherit = inherit

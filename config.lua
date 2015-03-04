@@ -25,12 +25,14 @@ namespace.config = config
 
 ---config section
 config["core"] = {
-	["is_a_really_cool_addon"] = true, --debug 
+	["show_error"] = true,
+	["show_warning"] = true,
+	["show_debug"] = true,
 }
 
 config["pp"] = {
-	["enable"] = false,
-	["ui_scale"] = 0.64, --nil or 0.64 to 1; nil turns it off
+	["enable"] = true,
+	["ui_scale"] = 0.7, --nil or 0.64 to 1; nil turns it off
 }
 
 config["console"] = {

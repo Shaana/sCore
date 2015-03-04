@@ -134,7 +134,7 @@ function pp._load()
   -- enable warnings
   if pp._config["enable"] then
     pp._object:SetScript("OnEvent", function()
-      print("[!] Warning: UI scale or display resolution changed. sCore.pp module won't function properly. Reload the interface to resolve.")
+      core.warning("UI scale or display resolution changed. sCore.pp module won't function properly. Reload the interface to resolve.")
     end)
   
     pp._object:RegisterEvent("UI_SCALE_CHANGED")
